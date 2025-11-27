@@ -1,0 +1,86 @@
+name: Documentation
+description: Create a documentation task
+title: "[DOC]: "
+labels: ["documentation"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Create a documentation task for updating or creating documentation.
+  
+  - type: textarea
+    id: description
+    attributes:
+      label: Documentation Description
+      description: What documentation needs to be created or updated?
+      placeholder: Describe what needs to be documented
+    validations:
+      required: true
+  
+  - type: dropdown
+    id: doc-type
+    attributes:
+      label: Documentation Type
+      description: What type of documentation is this?
+      options:
+        - README
+        - API Documentation
+        - User Guide
+        - Technical Documentation
+        - Architecture Diagram
+        - Database Schema
+        - Setup Instructions
+        - Other
+    validations:
+      required: true
+  
+  - type: textarea
+    id: content
+    attributes:
+      label: Required Content
+      description: What should be included in the documentation?
+      placeholder: |
+        - Overview
+        - Installation steps
+        - Usage examples
+        - etc.
+  
+  - type: textarea
+    id: files-affected
+    attributes:
+      label: Files to Create/Update
+      description: Which files need to be created or updated?
+      placeholder: |
+        - README.md
+        - docs/api.md
+        - etc.
+  
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      description: How important is this documentation?
+      options:
+        - Low
+        - Medium
+        - High
+        - Critical
+    validations:
+      required: true
+  
+  - type: textarea
+    id: definition-of-done
+    attributes:
+      label: Definition of Done
+      description: When is this documentation considered complete?
+      value: |
+        - [ ] Documentation written and reviewed
+        - [ ] Code examples tested (if applicable)
+        - [ ] Links verified
+        - [ ] Spelling and grammar checked
+  
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: Any other context or information
