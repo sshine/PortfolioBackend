@@ -1,0 +1,126 @@
+name: Technical Story
+description: Create a technical story for infrastructure, refactoring, or technical improvements
+title: "[TECH]: "
+labels: ["technical story"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Create a technical story for technical debt, infrastructure work, or technical improvements.
+  
+  - type: textarea
+    id: technical-goal
+    attributes:
+      label: Technical Goal
+      description: What technical improvement or change needs to be made?
+      placeholder: "As a developer, I want [technical change] so that [technical benefit]"
+    validations:
+      required: true
+  
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: Detailed description of the technical work
+      placeholder: What needs to be done and why?
+    validations:
+      required: true
+  
+  - type: dropdown
+    id: tech-type
+    attributes:
+      label: Technical Story Type
+      description: What type of technical work is this?
+      options:
+        - Refactoring
+        - Infrastructure
+        - Performance Optimization
+        - Security Enhancement
+        - Technical Debt
+        - Architecture Change
+        - DevOps/CI/CD
+        - Testing Infrastructure
+        - Database Migration
+        - Other
+    validations:
+      required: true
+  
+  - type: textarea
+    id: technical-details
+    attributes:
+      label: Technical Details
+      description: Technical implementation details, architecture considerations, etc.
+      placeholder: |
+        - Current state
+        - Proposed solution
+        - Technical constraints
+        - Dependencies
+  
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Acceptance Criteria
+      description: What conditions must be met for this technical story to be complete?
+      placeholder: |
+        - [ ] Criterion 1
+        - [ ] Criterion 2
+        - [ ] Criterion 3
+    validations:
+      required: true
+  
+  - type: textarea
+    id: affected-components
+    attributes:
+      label: Affected Components
+      description: Which parts of the system will be affected?
+      placeholder: |
+        - Backend services
+        - Database
+        - CI/CD pipeline
+        - etc.
+  
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      description: How important is this technical work?
+      options:
+        - Low
+        - Medium
+        - High
+        - Critical
+    validations:
+      required: true
+  
+  - type: input
+    id: story-points
+    attributes:
+      label: Story Points
+      description: Estimated story points (filled during backlog refinement)
+      placeholder: "e.g., 3, 5, 8"
+  
+  - type: textarea
+    id: testing-strategy
+    attributes:
+      label: Testing Strategy
+      description: How will this technical change be tested?
+      placeholder: |
+        - Unit tests
+        - Integration tests
+        - Performance tests
+        - Manual verification steps
+  
+  - type: textarea
+    id: risks
+    attributes:
+      label: Risks and Mitigation
+      description: What are the potential risks and how will they be mitigated?
+      placeholder: |
+        Risk: [describe risk]
+        Mitigation: [how to handle it]
+  
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: Any other context, links, or references
