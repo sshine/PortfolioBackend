@@ -1,7 +1,7 @@
 name: User Story
 description: Create a new user story for the backlog
 title: "[STORY]: "
-labels: ["user-story"]
+labels: ["user story"]
 body:
   - type: markdown
     attributes:

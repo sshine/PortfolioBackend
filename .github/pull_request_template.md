@@ -2,7 +2,7 @@
 <!-- Provide a clear description of the changes -->
 
 ## Related Issue
-Closes this issue #<!-- issue number -->
+Closes #<!-- issue number -->
 
 ## Type of Change
 <!-- Mark with an "x" -->
@@ -15,8 +15,8 @@ Closes this issue #<!-- issue number -->
 ## Changes Made
 <!-- List the specific changes -->
 - 
--
--
+- 
+- 
 
 ## Testing
 <!-- Describe the testing performed -->
