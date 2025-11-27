@@ -53,7 +53,7 @@ body:
     attributes:
       label: Definition of Done
       description: When is this task considered complete?
-      placeholder: |
+      value: |
         - [ ] Code written and tested
         - [ ] Code reviewed
         - [ ] Tests pass locally
