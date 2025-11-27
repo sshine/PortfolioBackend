@@ -20,7 +20,7 @@ jobs:
             
             // Query to find the PR in the project
             const query = `
-              query($org: String!, $number: Int!, $prNumber: Int!, $repo: String!) {
+              query($org: String!, $number: Int!) {
                 organization(login: $org) {
                   projectV2(number: $number) {
                     id
@@ -56,9 +56,7 @@ jobs:
             
             const result = await github.graphql(query, {
               org: 'TeamOrnOps',
-              number: 3,
-              prNumber: pr.number,
-              repo: context.repo.repo
+              number: 3
             });
             
             const project = result.organization.projectV2;
@@ -110,10 +108,10 @@ jobs:
               optionId: doneOption.id
             });
             
-            console.log(`✅ Moved PR #${pr.number} to Done`);
+            console.log(`Moved PR #${pr.number} to Done`);
             
             // Add comment to PR
-            const wasMerged = pr.merged ? '✅ merged' : '🚫 closed without merging';
+            const wasMerged = pr.merged ? 'merged' : 'closed without merging';
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
