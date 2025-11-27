@@ -1,0 +1,122 @@
+name: Move Closed PR to Done
+
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  move-to-done:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    
+    steps:
+      - name: Move PR to Done
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        with:
+          github-token: ${{ secrets.PROJECT_TOKEN }}
+          script: |
+            const pr = context.payload.pull_request;
+            
+            // Query to find the PR in the project
+            const query = `
+              query($org: String!, $number: Int!, $prNumber: Int!, $repo: String!) {
+                organization(login: $org) {
+                  projectV2(number: $number) {
+                    id
+                    fields(first: 20) {
+                      nodes {
+                        ... on ProjectV2SingleSelectField {
+                          id
+                          name
+                          options {
+                            id
+                            name
+                          }
+                        }
+                      }
+                    }
+                    items(first: 100) {
+                      nodes {
+                        id
+                        content {
+                          ... on PullRequest {
+                            number
+                            repository {
+                              name
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            `;
+            
+            const result = await github.graphql(query, {
+              org: 'TeamOrnOps',
+              number: 3,
+              prNumber: pr.number,
+              repo: context.repo.repo
+            });
+            
+            const project = result.organization.projectV2;
+            
+            // Find the project item for this PR
+            const projectItem = project.items.nodes.find(item => 
+              item.content?.number === pr.number && 
+              item.content?.repository?.name === context.repo.repo
+            );
+            
+            if (!projectItem) {
+              console.log('PR not found in project');
+              return;
+            }
+            
+            // Find Status field and Done option
+            const statusField = project.fields.nodes.find(f => f.name === 'Status');
+            if (!statusField) {
+              console.log('Status field not found');
+              return;
+            }
+            
+            const doneOption = statusField.options.find(o => o.name === 'Done');
+            if (!doneOption) {
+              console.log('Done option not found in Status field');
+              return;
+            }
+            
+            // Update the status to Done
+            await github.graphql(`
+              mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String!) {
+                updateProjectV2ItemFieldValue(
+                  input: {
+                    projectId: $projectId
+                    itemId: $itemId
+                    fieldId: $fieldId
+                    value: { singleSelectOptionId: $optionId }
+                  }
+                ) {
+                  projectV2Item {
+                    id
+                  }
+                }
+              }
+            `, {
+              projectId: project.id,
+              itemId: projectItem.id,
+              fieldId: statusField.id,
+              optionId: doneOption.id
+            });
+            
+            console.log(`✅ Moved PR #${pr.number} to Done`);
+            
+            // Add comment to PR
+            const wasMerged = pr.merged ? '✅ merged' : '🚫 closed without merging';
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr.number,
+              body: `🎉 This PR was ${wasMerged} and automatically moved to **Done** on the [Scrum Board](https://github.com/orgs/TeamOrnOps/projects/3)`
+            });

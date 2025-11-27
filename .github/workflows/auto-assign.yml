@@ -15,12 +15,155 @@ jobs:
       contents: read
     
     steps:
-      - name: Add to Project
+      - name: Add to Project and Set Fields
         uses: actions/add-to-project@31b3f3ccdc584546fc445612dec3f38ff5edb41c # v1.0.1
+        id: add-project
         with:
           project-url: https://github.com/orgs/TeamOrnOps/projects/3
           github-token: ${{ secrets.PROJECT_TOKEN }}
-
+      
+      - name: Set Type and Status
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        with:
+          github-token: ${{ secrets.PROJECT_TOKEN }}
+          script: |
+            const item = context.payload.issue || context.payload.pull_request;
+            const issueName = item.title.toLowerCase();
+            const body = (item.body || '').toLowerCase();
+            
+            // Determine the type based on title
+            let issueType = 'Task'; // default
+            if (issueName.includes('[bug]')) {
+              issueType = 'Bug';
+            } else if (issueName.includes('[feature]') || issueName.includes('[story]')) {
+              issueType = 'Feature';
+            } else if (issueName.includes('[task]')) {
+              issueType = 'Task';
+            }
+            
+            // Determine status - Issues go to "Backlog", don't set status for PRs on open
+            let status = null;
+            if (context.payload.issue) {
+              status = 'Backlog';
+            }
+            
+            console.log(`Setting Type: ${issueType}${status ? ', Status: ' + status : ''}`);
+            
+            // Track what was automated for comment
+            const automationActions = [];
+            
+            // Get the project item ID that was just added
+            const projectItemId = '${{ steps.add-project.outputs.itemId }}';
+            
+            if (projectItemId) {
+              // Query to get project field IDs
+              const projectQuery = `
+                query($org: String!, $number: Int!) {
+                  organization(login: $org) {
+                    projectV2(number: $number) {
+                      id
+                      fields(first: 20) {
+                        nodes {
+                          ... on ProjectV2SingleSelectField {
+                            id
+                            name
+                            options {
+                              id
+                              name
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              `;
+              
+              const projectData = await github.graphql(projectQuery, {
+                org: 'TeamOrnOps',
+                number: 3
+              });
+              
+              const project = projectData.organization.projectV2;
+              const fields = project.fields.nodes;
+              
+              // Find Type and Status fields
+              const typeField = fields.find(f => f.name === 'Type');
+              const statusField = fields.find(f => f.name === 'Status');
+              
+              // Update Type field
+              if (typeField) {
+                const typeOption = typeField.options.find(o => o.name === issueType);
+                if (typeOption) {
+                  await github.graphql(`
+                    mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String!) {
+                      updateProjectV2ItemFieldValue(
+                        input: {
+                          projectId: $projectId
+                          itemId: $itemId
+                          fieldId: $fieldId
+                          value: { singleSelectOptionId: $optionId }
+                        }
+                      ) {
+                        projectV2Item {
+                          id
+                        }
+                      }
+                    }
+                  `, {
+                    projectId: project.id,
+                    itemId: projectItemId,
+                    fieldId: typeField.id,
+                    optionId: typeOption.id
+                  });
+                  console.log(`✅ Set Type to: ${issueType}`);
+                  automationActions.push(`**Type** set to: \`${issueType}\``);
+                }
+              }
+              
+              // Update Status field (only for issues, not PRs on open)
+              if (statusField && status) {
+                const statusOption = statusField.options.find(o => o.name === status);
+                if (statusOption) {
+                  await github.graphql(`
+                    mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String!) {
+                      updateProjectV2ItemFieldValue(
+                        input: {
+                          projectId: $projectId
+                          itemId: $itemId
+                          fieldId: $fieldId
+                          value: { singleSelectOptionId: $optionId }
+                        }
+                      ) {
+                        projectV2Item {
+                          id
+                        }
+                      }
+                    }
+                  `, {
+                    projectId: project.id,
+                    itemId: projectItemId,
+                    fieldId: statusField.id,
+                    optionId: statusOption.id
+                  });
+                  console.log(`✅ Set Status to: ${status}`);
+                  automationActions.push(`**Status** set to: \`${status}\``);
+                }
+              }
+              
+              // Post comment about automation
+              if (automationActions.length > 0) {
+                const commentBody = `🤖 **Automated Actions**\n\n${automationActions.map(a => `- ${a}`).join('\n')}\n\n✅ Added to [Scrum Board](https://github.com/orgs/TeamOrnOps/projects/3)`;
+                
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: item.number,
+                  body: commentBody
+                });
+              }
+            }
+      
       - name: Auto-label based on type
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
         with:
@@ -67,4 +210,15 @@ jobs:
                   labels: labels
                 });
               }
+              
+              console.log(`✅ Auto-applied labels: ${labels.join(', ')}`);
+              
+              // Post comment about labels
+              const labelList = labels.map(l => `\`${l}\``).join(', ');
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                body: `🏷️ Auto-applied labels: ${labelList}`
+              });
             }

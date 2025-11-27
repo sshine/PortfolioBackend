@@ -56,6 +56,24 @@ jobs:
                 });
                 
                 console.log(`✅ Linked PR #${pr.number} to Issue #${issueNumber}`);
+                
+                // Add comment linking to issue if not already in body
+                if (!prBody.includes(`#${issueNumber}`)) {
+                  await github.rest.issues.createComment({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: pr.number,
+                    body: `🔗 This PR is linked to issue #${issueNumber}`
+                  });
+                }
+                
+                // Add comment to the issue that a PR was opened
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issueNumber,
+                  body: `🔄 Pull request #${pr.number} opened for this issue`
+                });
               } catch (error) {
                 console.log(`⚠️ Issue #${issueNumber} not found`);
               }
