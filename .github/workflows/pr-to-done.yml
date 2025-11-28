@@ -1,24 +1,50 @@
-name: Move Closed PR to Done
+name: Move Closed Issue to Done
 
 on:
   pull_request:
     types: [closed]
 
 jobs:
-  move-to-done:
+  move-issue-to-done:
     runs-on: ubuntu-latest
     permissions:
       pull-requests: read
-    
+      issues: write
+
     steps:
-      - name: Move PR to Done
+      - name: Move Linked Issue to Done
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
         with:
           github-token: ${{ secrets.PROJECT_TOKEN }}
           script: |
             const pr = context.payload.pull_request;
+            const prBody = pr.body || '';
             
-            // Query to find the PR in the project
+            // Extract issue number from PR body or branch name
+            let issueNumber = null;
+            
+            // Try to find "Closes #X" in PR body
+            const closesMatch = prBody.match(/(?:closes|fixes|resolves)\s+#(\d+)/i);
+            if (closesMatch) {
+              issueNumber = closesMatch[1];
+            }
+            
+            // If not found in body, try branch name (feature/#X-description)
+            if (!issueNumber) {
+              const branchMatch = pr.head.ref.match(/feature\/#(\d+)/);
+              if (branchMatch) {
+                issueNumber = branchMatch[1];
+              }
+            }
+            
+            if (!issueNumber) {
+              console.log('No linked issue found');
+              return;
+            }
+            
+            console.log(`Found linked issue #${issueNumber}`);
+            
+            // Query to find the issue in the project
             const query = `
               query($org: String!, $number: Int!) {
                 organization(login: $org) {
@@ -40,7 +66,7 @@ jobs:
                       nodes {
                         id
                         content {
-                          ... on PullRequest {
+                          ... on Issue {
                             number
                             repository {
                               name
@@ -61,14 +87,14 @@ jobs:
             
             const project = result.organization.projectV2;
             
-            // Find the project item for this PR
+            // Find the project item for this issue
             const projectItem = project.items.nodes.find(item => 
-              item.content?.number === pr.number && 
+              item.content?.number === parseInt(issueNumber) && 
               item.content?.repository?.name === context.repo.repo
             );
             
             if (!projectItem) {
-              console.log('PR not found in project');
+              console.log(`Issue #${issueNumber} not found in project`);
               return;
             }
             
@@ -108,13 +134,13 @@ jobs:
               optionId: doneOption.id
             });
             
-            console.log(`Moved PR #${pr.number} to Done`);
+            console.log(`Moved Issue #${issueNumber} to Done`);
             
-            // Add comment to PR
-            const wasMerged = pr.merged ? 'merged' : 'closed without merging';
+            // Add comment to the issue
+            const wasMerged = pr.merged ? 'merged' : 'closed';
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              issue_number: pr.number,
-              body: `🎉 This PR was ${wasMerged} and automatically moved to **Done** on the [Scrum Board](https://github.com/orgs/TeamOrnOps/projects/3)`
+              issue_number: issueNumber,
+              body: `This issue was automatically moved to Done because PR #${pr.number} was ${wasMerged}.`
             });
