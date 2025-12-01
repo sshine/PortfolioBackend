@@ -2,6 +2,8 @@ package org.ek.portfoliobackend.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import org.ek.portfoliobackend.model.CustomerType;
+import org.ek.portfoliobackend.model.ServiceCategory;
 
 import java.time.LocalDate;
 

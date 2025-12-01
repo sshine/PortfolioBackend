@@ -2,6 +2,7 @@ package org.ek.portfoliobackend.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotNull;
+import org.ek.portfoliobackend.model.ImageType;
 
 public class ImageUploadRequest {
 
