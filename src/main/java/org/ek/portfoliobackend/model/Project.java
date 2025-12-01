@@ -3,16 +3,11 @@ package org.ek.portfoliobackend.model;
 
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
-import lombok.*;
+
 
 import java.time.LocalDate;
 import java.util.List;
 import java.util.ArrayList;
-
-@NoArgsConstructor
-@AllArgsConstructor
-@Getter
-@Setter
 
 
 @Entity
@@ -42,6 +37,19 @@ public class Project {
     @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Image> images = new ArrayList<>();
 
+    public Project() {}
+
+
+    public Project(Long id, String title, String description, ServiceCategory serviceCategory, CustomerType customerType, LocalDate executionDate, LocalDate creationDate, List<Image> images) {
+        this.id = id;
+        this.title = title;
+        this.description = description;
+        this.serviceCategory = serviceCategory;
+        this.customerType = customerType;
+        this.executionDate = executionDate;
+        this.creationDate = creationDate;
+        this.images = images;
+    }
 
 
     public void addImage(Image image) {
@@ -52,6 +60,70 @@ public class Project {
     public void removeImage(Image image) {
         images.remove(image);
         image.setProject(null);
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public void setTitle(String title) {
+        this.title = title;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public ServiceCategory getServiceCategory() {
+        return serviceCategory;
+    }
+
+    public void setServiceCategory(ServiceCategory serviceCategory) {
+        this.serviceCategory = serviceCategory;
+    }
+
+    public CustomerType getCustomerType() {
+        return customerType;
+    }
+
+    public void setCustomerType(CustomerType customerType) {
+        this.customerType = customerType;
+    }
+
+    public LocalDate getExecutionDate() {
+        return executionDate;
+    }
+
+    public void setExecutionDate(LocalDate executionDate) {
+        this.executionDate = executionDate;
+    }
+
+    public LocalDate getCreationDate() {
+        return creationDate;
+    }
+
+    public void setCreationDate(LocalDate creationDate) {
+        this.creationDate = creationDate;
+    }
+
+    public List<Image> getImages() {
+        return images;
+    }
+
+    public void setImages(List<Image> images) {
+        this.images = images;
     }
 
 
