@@ -6,9 +6,9 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
+import java.util.List;
 import org.ek.portfoliobackend.model.ServiceCategory;
 import org.ek.portfoliobackend.model.CustomerType;
-import java.util.List;
 
 @Data
 @Builder
