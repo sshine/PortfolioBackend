@@ -1,0 +1,31 @@
+DROP TABLE IF EXISTS IMAGE;
+DROP TABLE IF EXISTS PROJECT;
+DROP TABLE IF EXISTS PROFILE;
+
+CREATE TABLE PROFILE (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255),
+    email VARCHAR(255),
+    password VARCHAR(255)
+
+);
+
+CREATE TABLE PROJECT (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(255),
+    description VARCHAR(2000),
+    execution_date DATE,
+    service_category VARCHAR(255),
+    customer_type VARCHAR(255),
+    creation_date DATE
+
+);
+
+CREATE TABLE IMAGE (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    url VARCHAR(500),
+    image_type VARCHAR(255),
+    is_featured BOOLEAN,
+    project_id BIGINT,
+    CONSTRAINT fk_project FOREIGN KEY (project_id) REFERENCES PROJECT(id)
+);
