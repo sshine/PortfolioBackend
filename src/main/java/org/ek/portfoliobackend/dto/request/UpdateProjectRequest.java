@@ -8,7 +8,6 @@ import org.ek.portfoliobackend.model.ServiceCategory;
 import org.ek.portfoliobackend.model.CustomerType;
 import java.time.LocalDate;
 
-
 @Data // indeholder getter/setter + toString(), equals(), hashCode() (Sidste to er måske ikke nødvendige, men de er der)
 @NoArgsConstructor
 @AllArgsConstructor
