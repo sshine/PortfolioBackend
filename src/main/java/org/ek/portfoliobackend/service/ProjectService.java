@@ -1,18 +1,22 @@
 package org.ek.portfoliobackend.service;
 
 import org.ek.portfoliobackend.dto.request.CreateProjectRequest;
+import org.ek.portfoliobackend.dto.request.ImageUploadRequest;
 import org.ek.portfoliobackend.dto.request.UpdateProjectRequest;
 import org.ek.portfoliobackend.dto.response.ProjectResponse;
 import org.ek.portfoliobackend.model.CustomerType;
 import org.ek.portfoliobackend.model.WorkType;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
 import java.util.List;
 
 public interface ProjectService {
 
-    //create new project
-    ProjectResponse createProject(CreateProjectRequest request);
+    //create new project with images
+    ProjectResponse createProject(CreateProjectRequest request,
+                                  List<MultipartFile> images,
+                                  List<ImageUploadRequest> imageMetadata);
 
     //update existing project
     ProjectResponse updateProject(Long id, UpdateProjectRequest request);
