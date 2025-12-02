@@ -3,7 +3,7 @@ package org.ek.portfoliobackend.model;
 import lombok.Getter;
 
 @Getter
-public enum ServiceCategory {
+public enum WorkType {
 
     PAVING_CLEANING("Fliserens"),
     WOODEN_DECK_CLEANING ("Rens af træterrasse"),
@@ -12,7 +12,7 @@ public enum ServiceCategory {
 
     private final String displayName;
 
-    ServiceCategory(String displayName) {
+    WorkType(String displayName) {
         this.displayName = displayName;
     }
 

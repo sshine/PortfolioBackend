@@ -4,7 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import org.ek.portfoliobackend.model.ServiceCategory;
+import org.ek.portfoliobackend.model.WorkType;
 import org.ek.portfoliobackend.model.CustomerType;
 import java.time.LocalDate;
 
@@ -14,7 +14,7 @@ import java.time.LocalDate;
 public class UpdateProjectRequest {
     private String title;
     private String description;
-    private ServiceCategory serviceCategory; // TODO: Kan vi ændre klassen til at hedde JobTypeCategory i stedet?
+    private WorkType workType; // TODO: Kan vi ændre klassen til at hedde JobTypeCategory i stedet?
     private CustomerType customerType;
     private LocalDate executionDate;
 

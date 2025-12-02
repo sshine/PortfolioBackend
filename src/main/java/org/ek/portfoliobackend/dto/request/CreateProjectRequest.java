@@ -1,9 +1,9 @@
-package org.ek.portfoliobackend.dto;
+package org.ek.portfoliobackend.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import org.ek.portfoliobackend.model.CustomerType;
-import org.ek.portfoliobackend.model.ServiceCategory;
+import org.ek.portfoliobackend.model.WorkType;
 
 import java.time.LocalDate;
 
@@ -19,7 +19,7 @@ public class CreateProjectRequest {
     private LocalDate executionDate;
 
     @NotNull(message = "The project requires a service category")
-    private ServiceCategory serviceCategory;
+    private WorkType workType;
 
     @NotNull(message = "The project requires a customer type")
     private CustomerType customerType;
@@ -27,11 +27,11 @@ public class CreateProjectRequest {
     public CreateProjectRequest() {}
 
     public CreateProjectRequest(String title, String description, LocalDate executionDate,
-                                ServiceCategory serviceCategory, CustomerType customerType) {
+                                WorkType workType, CustomerType customerType) {
         this.title = title;
         this.description = description;
         this.executionDate = executionDate;
-        this.serviceCategory = serviceCategory;
+        this.workType = workType;
         this.customerType = customerType;
     }
 
@@ -60,12 +60,12 @@ public class CreateProjectRequest {
         this.executionDate = executionDate;
     }
 
-    public ServiceCategory getServiceCategory() {
-        return serviceCategory;
+    public WorkType getServiceCategory() {
+        return workType;
     }
 
-    public void setServiceCategory(ServiceCategory serviceCategory) {
-        this.serviceCategory = serviceCategory;
+    public void setServiceCategory(WorkType workType) {
+        this.workType = workType;
     }
 
     public CustomerType getCustomerType() {

@@ -7,7 +7,7 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 import java.util.List;
-import org.ek.portfoliobackend.model.ServiceCategory;
+import org.ek.portfoliobackend.model.WorkType;
 import org.ek.portfoliobackend.model.CustomerType;
 
 @Data
@@ -21,7 +21,7 @@ public class ProjectResponse {
     private String description;
     private LocalDate executionDate;
     private LocalDate creationDate;
-    private ServiceCategory serviceCategory;
+    private WorkType workType;
     private CustomerType customerType;
     private List<ImageResponse> images;
 

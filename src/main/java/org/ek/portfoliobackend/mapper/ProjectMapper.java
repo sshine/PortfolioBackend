@@ -1,6 +1,6 @@
 package org.ek.portfoliobackend.mapper;
 
-import org.ek.portfoliobackend.dto.CreateProjectRequest;
+import org.ek.portfoliobackend.dto.request.CreateProjectRequest;
 import org.ek.portfoliobackend.model.*;
 
 import org.springframework.stereotype.Component;
