@@ -1,6 +1,8 @@
 package org.ek.portfoliobackend.mapper;
 
 import org.ek.portfoliobackend.dto.CreateProjectRequest;
+import org.ek.portfoliobackend.dto.request.UpdateProjectRequest;
+import org.ek.portfoliobackend.dto.response.ProjectResponse;
 import org.ek.portfoliobackend.model.*;
 
 import org.springframework.stereotype.Component;
@@ -48,4 +50,20 @@ public class ProjectMapper {
 
         return image;
     }
+
+    public void updateProjectEntity(UpdateProjectRequest request, Project project) {
+
+        if (request.getTitle() != null) {
+            project.setTitle(request.getTitle());
+        }
+
+        if(request.getDescription() != null) {
+            project.setDescription(request.getDescription());
+        }
+
+        if (request.get)
+    }
+
+
+
 }
