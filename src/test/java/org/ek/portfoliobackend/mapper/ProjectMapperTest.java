@@ -60,7 +60,7 @@ class ProjectMapperTest {
         assertThat(project.getTitle()).isEqualTo("Facade Cleaning Project");
         assertThat(project.getDescription()).isEqualTo("Complete facade cleaning for apartment building");
         assertThat(project.getExecutionDate()).isEqualTo(executionDate);
-        assertThat(project.getServiceCategory()).isEqualTo(WorkType.FACADE_CLEANING);
+        assertThat(project.getWorkType()).isEqualTo(WorkType.FACADE_CLEANING);
         assertThat(project.getCustomerType()).isEqualTo(CustomerType.BUSINESS_CUSTOMER);
     }
 
@@ -118,7 +118,7 @@ class ProjectMapperTest {
             Project project = projectMapper.toProjectEntity(request);
 
             // Verificer at kategorien blev mappet korrekt
-            assertThat(project.getServiceCategory()).isEqualTo(category);
+            assertThat(project.getWorkType()).isEqualTo(category);
         }
     }
 
@@ -181,7 +181,7 @@ class ProjectMapperTest {
         assertThat(image).isNotNull();
         assertThat(image.getUrl()).isEqualTo(imageUrl);
         assertThat(image.getImageType()).isEqualTo(ImageType.BEFORE);
-        assertThat(image.isFeatured()).isTrue();
+        assertThat(image.getIsFeatured()).isTrue();
         assertThat(image.getProject()).isEqualTo(project);  // Relation er etableret
     }
 
@@ -208,7 +208,7 @@ class ProjectMapperTest {
         );
 
         // Assert - Verificer at billedet IKKE er featured
-        assertThat(image.isFeatured()).isFalse();
+        assertThat(image.getIsFeatured()).isFalse();
         assertThat(image.getImageType()).isEqualTo(ImageType.AFTER);
     }
 

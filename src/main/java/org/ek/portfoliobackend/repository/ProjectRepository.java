@@ -12,18 +12,27 @@ import java.util.List;
 @Repository
 public interface ProjectRepository extends JpaRepository<Project, Long> {
 
-    //find all projects by service category
-    List<Project> findByServiceCategory(WorkType workType);
+    // Find all projects by service category
+    List<Project> findByWorkType(WorkType workType);
 
-    //find all projects by customer type
+    // Find all projects by customer type
     List<Project> findByCustomerType(CustomerType customerType);
 
-    //find all projects by service category and customer type
-    List<Project> findByServiceCategoryAndCustomerType(WorkType workType, CustomerType customerType);
+    // Find all projects by service category and customer type
+    List<Project> findByWorkTypeAndCustomerType(WorkType workType, CustomerType customerType);
 
-    //find all projects by execution date between two dates
+    // Find all projects by execution date between two dates
     List<Project> findByExecutionDateBetween(LocalDate startDate, LocalDate endDate);
 
-    //find all projects ordered by creation date descending
+    // Find all projects ordered by creation date descending (newest first)
     List<Project> findAllByOrderByCreationDateDesc();
+
+    // Find all projects ordered by creation date ascending (oldest first)
+    List<Project> findAllByOrderByCreationDateAsc();
+
+    // Find projects by service category ordered by creation date descending
+    List<Project> findByWorkTypeOrderByCreationDateDesc(WorkType workType);
+
+    // Find projects by customer type ordered by creation date descending
+    List<Project> findByCustomerTypeOrderByCreationDateDesc(CustomerType customerType);
 }

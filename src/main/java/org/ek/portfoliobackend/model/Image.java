@@ -56,11 +56,11 @@ public class Image {
         this.imageType = imageType;
     }
 
-    public boolean isFeatured() {
+    public boolean getIsFeatured() {
         return isFeatured;
     }
 
-    public void setFeatured(boolean featured) {
+    public void setIsFeatured(boolean featured) {
         isFeatured = featured;
     }
 

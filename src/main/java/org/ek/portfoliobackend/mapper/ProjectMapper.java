@@ -22,7 +22,7 @@ public class ProjectMapper {
         project.setTitle(request.getTitle());
         project.setDescription(request.getDescription());
         project.setExecutionDate(request.getExecutionDate());
-        project.setServiceCategory(request.getServiceCategory());
+        project.setWorkType(request.getServiceCategory());
         project.setCustomerType(request.getCustomerType());
         project.setCreationDate(LocalDate.now());
 
@@ -43,7 +43,7 @@ public class ProjectMapper {
         Image image = new Image();
         image.setUrl(url);
         image.setImageType(imageType);
-        image.setFeatured(isFeatured);
+        image.setIsFeatured(isFeatured);
         image.setProject(project);
 
         return image;

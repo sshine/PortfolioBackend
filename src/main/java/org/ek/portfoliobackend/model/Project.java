@@ -86,11 +86,11 @@ public class Project {
         this.description = description;
     }
 
-    public WorkType getServiceCategory() {
+    public WorkType getWorkType() {
         return workType;
     }
 
-    public void setServiceCategory(WorkType workType) {
+    public void setWorkType(WorkType workType) {
         this.workType = workType;
     }
 
