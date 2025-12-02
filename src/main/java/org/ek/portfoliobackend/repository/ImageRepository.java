@@ -11,18 +11,30 @@ import java.util.List;
 @Repository
 public interface ImageRepository extends JpaRepository<Image, Long> {
 
-    //find all images by project
+    // Find all images by project
     List<Image> findByProject(Project project);
 
-    //find all images by project id
+    // Find all images by project id
     List<Image> findByProjectId(Long projectId);
 
-    //Find all featured images
+    // Find all featured images
     List<Image> findByIsFeaturedTrue();
 
-    //Find all images by type (BEFORE/AFTER)
+    // Find all non-featured images
+    List<Image> findByIsFeaturedFalse();
+
+    // Find all images by type (BEFORE/AFTER)
     List<Image> findByImageType(ImageType imageType);
 
-    //Find all featured images by project
+    // Find all featured images by project
     List<Image> findByProjectIdAndIsFeaturedTrue(Long projectId);
+
+    // Find all non-featured images by project
+    List<Image> findByProjectIdAndIsFeaturedFalse(Long projectId);
+
+    // Find images by type and featured status
+    List<Image> findByImageTypeAndIsFeatured(ImageType imageType, boolean isFeatured);
+
+    // Find images by project and type
+    List<Image> findByProjectIdAndImageType(Long projectId, ImageType imageType);
 }
