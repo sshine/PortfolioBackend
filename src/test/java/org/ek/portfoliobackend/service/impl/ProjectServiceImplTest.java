@@ -1,9 +1,9 @@
 package org.ek.portfoliobackend.service.impl;
 
-import org.ek.portfoliobackend.dto.CreateProjectRequest;
+import org.ek.portfoliobackend.dto.request.CreateProjectRequest;
 import org.ek.portfoliobackend.dto.request.UpdateProjectRequest;
 import org.ek.portfoliobackend.model.CustomerType;
-import org.ek.portfoliobackend.model.ServiceCategory;
+import org.ek.portfoliobackend.model.WorkType;
 import org.ek.portfoliobackend.repository.ProjectRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -36,7 +36,7 @@ class ProjectServiceImplTest {
     void createProject_throwsUnsupportedOperationException() {
         CreateProjectRequest request = new CreateProjectRequest(
                 "Test", "Desc", LocalDate.now(),
-                ServiceCategory.PAVING_CLEANING, CustomerType.PRIVATE_CUSTOMER
+                WorkType.PAVING_CLEANING, CustomerType.PRIVATE_CUSTOMER
         );
 
         assertThatThrownBy(() -> projectService.createProject(request)) // by running this method
@@ -76,7 +76,7 @@ class ProjectServiceImplTest {
 
     @Test
     void getProjectsByServiceCategory_throwsUnsupportedOperationException() {
-        assertThatThrownBy(() -> projectService.getProjectsByServiceCategory(ServiceCategory.PAVING_CLEANING))
+        assertThatThrownBy(() -> projectService.getProjectsByServiceCategory(WorkType.PAVING_CLEANING))
                 .isInstanceOf(UnsupportedOperationException.class)
                 .hasMessage("Not implemented yet");
     }
@@ -91,7 +91,7 @@ class ProjectServiceImplTest {
     @Test
     void getProjectsByFilters_throwsUnsupportedOperationException() {
         assertThatThrownBy(() -> projectService.getProjectsByFilters(
-                ServiceCategory.PAVING_CLEANING, CustomerType.PRIVATE_CUSTOMER))
+                WorkType.PAVING_CLEANING, CustomerType.PRIVATE_CUSTOMER))
                 .isInstanceOf(UnsupportedOperationException.class)
                 .hasMessage("Not implemented yet");
     }

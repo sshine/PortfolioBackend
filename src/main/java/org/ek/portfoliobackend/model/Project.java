@@ -24,7 +24,7 @@ public class Project {
     private String description;
 
     @Enumerated(EnumType.STRING)
-    private ServiceCategory serviceCategory;
+    private WorkType workType;
 
     @Enumerated(EnumType.STRING)
     private CustomerType customerType;
@@ -40,11 +40,11 @@ public class Project {
     public Project() {}
 
 
-    public Project(Long id, String title, String description, ServiceCategory serviceCategory, CustomerType customerType, LocalDate executionDate, LocalDate creationDate, List<Image> images) {
+    public Project(Long id, String title, String description, WorkType workType, CustomerType customerType, LocalDate executionDate, LocalDate creationDate, List<Image> images) {
         this.id = id;
         this.title = title;
         this.description = description;
-        this.serviceCategory = serviceCategory;
+        this.workType = workType;
         this.customerType = customerType;
         this.executionDate = executionDate;
         this.creationDate = creationDate;
@@ -86,12 +86,12 @@ public class Project {
         this.description = description;
     }
 
-    public ServiceCategory getServiceCategory() {
-        return serviceCategory;
+    public WorkType getServiceCategory() {
+        return workType;
     }
 
-    public void setServiceCategory(ServiceCategory serviceCategory) {
-        this.serviceCategory = serviceCategory;
+    public void setServiceCategory(WorkType workType) {
+        this.workType = workType;
     }
 
     public CustomerType getCustomerType() {

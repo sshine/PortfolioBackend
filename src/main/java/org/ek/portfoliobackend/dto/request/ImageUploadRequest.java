@@ -1,4 +1,4 @@
-package org.ek.portfoliobackend.dto;
+package org.ek.portfoliobackend.dto.request;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotNull;

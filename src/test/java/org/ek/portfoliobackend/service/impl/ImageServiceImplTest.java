@@ -1,6 +1,6 @@
 package org.ek.portfoliobackend.service.impl;
 
-import org.ek.portfoliobackend.dto.ImageUploadRequest;
+import org.ek.portfoliobackend.dto.request.ImageUploadRequest;
 import org.ek.portfoliobackend.model.ImageType;
 import org.ek.portfoliobackend.repository.ImageRepository;
 import org.ek.portfoliobackend.repository.ProjectRepository;

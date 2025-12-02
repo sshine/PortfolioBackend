@@ -1,6 +1,6 @@
 package org.ek.portfoliobackend.mapper;
 
-import org.ek.portfoliobackend.dto.CreateProjectRequest;
+import org.ek.portfoliobackend.dto.request.CreateProjectRequest;
 import org.ek.portfoliobackend.model.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -48,7 +48,7 @@ class ProjectMapperTest {
                 "Facade Cleaning Project",
                 "Complete facade cleaning for apartment building",
                 executionDate,
-                ServiceCategory.FACADE_CLEANING,
+                WorkType.FACADE_CLEANING,
                 CustomerType.BUSINESS_CUSTOMER
         );
 
@@ -60,7 +60,7 @@ class ProjectMapperTest {
         assertThat(project.getTitle()).isEqualTo("Facade Cleaning Project");
         assertThat(project.getDescription()).isEqualTo("Complete facade cleaning for apartment building");
         assertThat(project.getExecutionDate()).isEqualTo(executionDate);
-        assertThat(project.getServiceCategory()).isEqualTo(ServiceCategory.FACADE_CLEANING);
+        assertThat(project.getServiceCategory()).isEqualTo(WorkType.FACADE_CLEANING);
         assertThat(project.getCustomerType()).isEqualTo(CustomerType.BUSINESS_CUSTOMER);
     }
 
@@ -79,7 +79,7 @@ class ProjectMapperTest {
                 "Test Project",
                 "Test Description",
                 LocalDate.now(),
-                ServiceCategory.PAVING_CLEANING,
+                WorkType.PAVING_CLEANING,
                 CustomerType.PRIVATE_CUSTOMER
         );
 
@@ -101,10 +101,10 @@ class ProjectMapperTest {
     @DisplayName("Should handle different service categories correctly")
     void toProjectEntity_ShouldHandleDifferentServiceCategories() {
         // Arrange - Hent alle mulige ServiceCategory værdier
-        ServiceCategory[] categories = ServiceCategory.values();
+        WorkType[] categories = WorkType.values();
 
         // Act & Assert - Test hver kategori individuelt
-        for (ServiceCategory category : categories) {
+        for (WorkType category : categories) {
             // Opret request med denne kategori
             CreateProjectRequest request = new CreateProjectRequest(
                     "Test Project",
@@ -142,7 +142,7 @@ class ProjectMapperTest {
                     "Test Project",
                     "Test Description",
                     LocalDate.now(),
-                    ServiceCategory.ROOF_CLEANING,
+                    WorkType.ROOF_CLEANING,
                     type  // Test denne specifikke kundetype
             );
 

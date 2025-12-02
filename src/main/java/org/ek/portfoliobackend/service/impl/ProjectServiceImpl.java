@@ -1,10 +1,10 @@
 package org.ek.portfoliobackend.service.impl;
 
-import org.ek.portfoliobackend.dto.CreateProjectRequest;
+import org.ek.portfoliobackend.dto.request.CreateProjectRequest;
 import org.ek.portfoliobackend.dto.request.UpdateProjectRequest;
 import org.ek.portfoliobackend.dto.response.ProjectResponse;
 import org.ek.portfoliobackend.model.CustomerType;
-import org.ek.portfoliobackend.model.ServiceCategory;
+import org.ek.portfoliobackend.model.WorkType;
 import org.ek.portfoliobackend.repository.ProjectRepository;
 import org.ek.portfoliobackend.service.ProjectService;
 import org.springframework.stereotype.Service;
@@ -47,7 +47,7 @@ public class ProjectServiceImpl implements ProjectService {
     }
 
     @Override
-    public List<ProjectResponse> getProjectsByServiceCategory(ServiceCategory serviceCategory) {
+    public List<ProjectResponse> getProjectsByServiceCategory(WorkType workType) {
         throw new UnsupportedOperationException("Not implemented yet");
     }
 
@@ -57,7 +57,7 @@ public class ProjectServiceImpl implements ProjectService {
     }
 
     @Override
-    public List<ProjectResponse> getProjectsByFilters(ServiceCategory serviceCategory, CustomerType customerType) {
+    public List<ProjectResponse> getProjectsByFilters(WorkType workType, CustomerType customerType) {
         throw new UnsupportedOperationException("Not implemented yet");
     }
 
