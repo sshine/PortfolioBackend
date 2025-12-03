@@ -349,14 +349,6 @@ class ProjectServiceImplTest {
 
     // ---- TDD tests for update ----
 
-    @Test
-    void updateProject_throwsUnsupportedOperationException() {
-        UpdateProjectRequest request = new UpdateProjectRequest();
-
-        assertThatThrownBy(() -> projectService.updateProject(1L, request))
-                .isInstanceOf(UnsupportedOperationException.class)
-                .hasMessage("Not implemented yet");
-    }
 
 
     // Image not found
@@ -521,12 +513,7 @@ class ProjectServiceImplTest {
                 .hasMessage("Not implemented yet");
     }
 
-    @Test
-    void deleteProject_throwsUnsupportedOperationException() {
-        assertThatThrownBy(() -> projectService.deleteProject(1L))
-                .isInstanceOf(UnsupportedOperationException.class)
-                .hasMessage("Not implemented yet");
-    }
+
 
     @Test
     void getProjectsByServiceCategory_throwsUnsupportedOperationException() {
