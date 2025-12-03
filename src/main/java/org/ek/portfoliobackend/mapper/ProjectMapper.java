@@ -161,7 +161,7 @@ public class ProjectMapper {
      * @param image Image entity fra databasen
      * @return ImageResponse DTO
      */
-    private ImageResponse toImageResponse(Image image) {
+    public ImageResponse toImageResponse(Image image) {
         ImageResponse response = new ImageResponse();
         response.setId(image.getId());
         response.setUrl(image.getUrl());

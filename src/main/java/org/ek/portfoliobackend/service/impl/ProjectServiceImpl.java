@@ -2,7 +2,9 @@ package org.ek.portfoliobackend.service.impl;
 
 import org.ek.portfoliobackend.dto.request.CreateProjectRequest;
 import org.ek.portfoliobackend.dto.request.ImageUploadRequest;
+import org.ek.portfoliobackend.dto.request.UpdateImageRequest;
 import org.ek.portfoliobackend.dto.request.UpdateProjectRequest;
+import org.ek.portfoliobackend.dto.response.ImageResponse;
 import org.ek.portfoliobackend.dto.response.ProjectResponse;
 import org.ek.portfoliobackend.mapper.ProjectMapper;
 import org.ek.portfoliobackend.model.CustomerType;
@@ -14,6 +16,8 @@ import org.ek.portfoliobackend.repository.ImageRepository;
 import org.ek.portfoliobackend.repository.ProjectRepository;
 import org.ek.portfoliobackend.service.ImageStorageService;
 import org.ek.portfoliobackend.service.ProjectService;
+import org.hibernate.annotations.NotFound;
+import org.springframework.boot.context.config.ConfigDataResourceNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -100,10 +104,41 @@ public class ProjectServiceImpl implements ProjectService {
         }
     }
 
+    // Update project
     @Override
+    @Transactional
     public ProjectResponse updateProject(Long id, UpdateProjectRequest request) {
-        throw new UnsupportedOperationException("Not implemented yet");
+
+        Project project = findProjectById(id);
+
+        projectMapper.updateProjectEntity(request, project);
+
+        projectRepository.save(project);
+
+        return projectMapper.toResponse(project);
+
+
     }
+
+    // Update image
+    @Override
+    @Transactional
+    public ImageResponse updateImage(Long imageId, UpdateImageRequest request) {
+
+        Image image = findImageById(imageId);
+
+        deleteImageUrl(image, request);
+
+        // Updates the image metadata
+        projectMapper.updateImageEntity(request, image);
+
+        // Saves new image
+        imageRepository.save(image);
+
+        return projectMapper.toImageResponse(image);
+
+    }
+
 
     @Override
     public ProjectResponse getProjectById(Long id) {
@@ -144,6 +179,8 @@ public class ProjectServiceImpl implements ProjectService {
     public List<ProjectResponse> getAllProjectsOrderedByDate() {
         throw new UnsupportedOperationException("Not implemented yet");
     }
+
+    // --- Methods for create project ---
 
     /**
      * Validate that images and metadata lists are not null and have matching sizes
@@ -189,5 +226,31 @@ public class ProjectServiceImpl implements ProjectService {
         if (!hasAfterImage) {
             throw new IllegalArgumentException("At least one AFTER image must be provided");
         }
+    }
+
+    // --- Method for update project ---
+
+    private Project findProjectById(Long id) {
+
+        return projectRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Project not found with id " + id));
+    }
+
+    // --- Methods for update image ---
+
+    private Image findImageById(Long imageId) {
+
+        return imageRepository.findById(imageId)
+                .orElseThrow(() -> new RuntimeException("Image not found with id " + imageId));
+    }
+
+    private void deleteImageUrl(Image image, UpdateImageRequest request) {
+
+        // If URL changes, delete the old one
+        if (request.getUrl() != null && !request.getUrl().equals(image.getUrl())) {
+            imageStorageService.delete(image.getUrl());
+        }
+
+
     }
 }

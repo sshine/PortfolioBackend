@@ -13,6 +13,12 @@ public class ProjectResponse {
 
     private Long id;
     private String title;
+    private String description;
+    private LocalDate executionDate;
+    private LocalDate creationDate;
+    private WorkType workType;
+    private CustomerType customerType;
+    private List<ImageResponse> images;
 
     public ProjectResponse(Long id, String title, String description, LocalDate executionDate, LocalDate creationDate, WorkType workType, CustomerType customerType, List<ImageResponse> images) {
         this.id = id;
@@ -25,13 +31,6 @@ public class ProjectResponse {
         this.images = images;
     }
     public ProjectResponse() {}
-
-    private String description;
-    private LocalDate executionDate;
-    private LocalDate creationDate;
-    private WorkType workType;
-    private CustomerType customerType;
-    private List<ImageResponse> images;
 
 
     public Long getId() {
