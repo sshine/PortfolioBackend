@@ -149,6 +149,48 @@ class ProjectControllerTest {
     }
 
     @Test
+    @DisplayName("GET /api/projects - Success with multiple projects")
+    void getAllProjects_ReturnsListOfProjects() throws Exception {
+        // Arrange
+        ProjectResponse project1 = new ProjectResponse();
+        project1.setId(1L);
+        project1.setTitle("Project 1");
+        project1.setWorkType(WorkType.FACADE_CLEANING);
+        project1.setCustomerType(CustomerType.BUSINESS_CUSTOMER);
+        project1.setImages(List.of());
+
+        ProjectResponse project2 = new ProjectResponse();
+        project2.setId(2L);
+        project2.setTitle("Project 2");
+        project2.setWorkType(WorkType.ROOF_CLEANING);
+        project2.setCustomerType(CustomerType.PRIVATE_CUSTOMER);
+        project2.setImages(List.of());
+
+        when(projectService.getAllProjects()).thenReturn(Arrays.asList(project1, project2));
+
+        // Act & Assert
+        mockMvc.perform(get("/api/projects"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].id").value(1))
+                .andExpect(jsonPath("$[0].title").value("Project 1"))
+                .andExpect(jsonPath("$[1].id").value(2))
+                .andExpect(jsonPath("$[1].title").value("Project 2"));
+    }
+
+    @Test
+    @DisplayName("GET /api/projects - Success with no projects")
+    void getAllProjects_ReturnsEmptyList() throws Exception {
+        // Arrange
+        when(projectService.getAllProjects()).thenReturn(List.of());
+
+        // Act & Assert
+        mockMvc.perform(get("/api/projects"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(0));
+    }
+
+    @Test
     @DisplayName("POST /api/projects - Success with valid data")
     void createProject_WithValidData_ReturnsCreated() throws Exception {
         // Arrange

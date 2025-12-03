@@ -378,10 +378,58 @@ class ProjectServiceImplTest {
 
 
     @Test
-    void getAllProjects_throwsUnsupportedOperationException() {
-        assertThatThrownBy(() -> projectService.getAllProjects())
-                .isInstanceOf(UnsupportedOperationException.class)
-                .hasMessage("Not implemented yet");
+    @DisplayName("getAllProjects - success")
+    void getAllProjects_ReturnsListOfProjectResponses() {
+        // Arrange
+        Project project1 = new Project();
+        project1.setId(1L);
+        project1.setTitle("Project 1");
+        project1.setDescription("Description 1");
+
+        Project project2 = new Project();
+        project2.setId(2L);
+        project2.setTitle("Project 2");
+        project2.setDescription("Description 2");
+
+        ProjectResponse response1 = new ProjectResponse();
+        response1.setId(1L);
+        response1.setTitle("Project 1");
+
+        ProjectResponse response2 = new ProjectResponse();
+        response2.setId(2L);
+        response2.setTitle("Project 2");
+
+        when(projectRepository.findAll()).thenReturn(List.of(project1, project2));
+        when(projectMapper.toResponse(project1)).thenReturn(response1);
+        when(projectMapper.toResponse(project2)).thenReturn(response2);
+
+        // Act
+        List<ProjectResponse> result = projectService.getAllProjects();
+
+        // Assert
+        assertNotNull(result);
+        assertEquals(2, result.size());
+        assertEquals(1L, result.get(0).getId());
+        assertEquals(2L, result.get(1).getId());
+        verify(projectRepository).findAll();
+        verify(projectMapper).toResponse(project1);
+        verify(projectMapper).toResponse(project2);
+    }
+
+    @Test
+    @DisplayName("getAllProjects - returns empty list when no projects exist")
+    void getAllProjects_NoProjectsExist_ReturnsEmptyList() {
+        // Arrange
+        when(projectRepository.findAll()).thenReturn(Collections.emptyList());
+
+        // Act
+        List<ProjectResponse> result = projectService.getAllProjects();
+
+        // Assert
+        assertNotNull(result);
+        assertTrue(result.isEmpty());
+        verify(projectRepository).findAll();
+        verify(projectMapper, never()).toResponse(any());
     }
 
     @Test

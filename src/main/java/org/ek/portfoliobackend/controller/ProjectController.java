@@ -31,12 +31,21 @@ public class ProjectController {
     }
 
 
-    // Retrieves a project by its ID (images included).
+    // Retrieves a project by its ID (images included)
     @GetMapping("/{id}")
     public ResponseEntity<ProjectResponse> getProjectById(@PathVariable Long id) {
         ProjectResponse response = projectService.getProjectById(id);
         log.info("Fetched project with ID: {}", id);
         return ResponseEntity.ok(response);
+    }
+
+    // retrieves all projects (images included)
+    @GetMapping
+    public ResponseEntity<List<ProjectResponse>> getAllProjects() {
+        log.info("Received request to fetch all projects");
+        List<ProjectResponse> projects = projectService.getAllProjects();
+        log.info("Successfully retrieved {} projects", projects.size());
+        return ResponseEntity.ok(projects);
     }
 
     /**

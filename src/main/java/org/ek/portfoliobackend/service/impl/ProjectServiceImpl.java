@@ -115,7 +115,10 @@ public class ProjectServiceImpl implements ProjectService {
 
     @Override
     public List<ProjectResponse> getAllProjects() {
-        throw new UnsupportedOperationException("Not implemented yet");
+        List<Project> projects = projectRepository.findAll();
+        return projects.stream()
+                .map(projectMapper::toResponse)
+                .toList();
     }
 
     @Override
