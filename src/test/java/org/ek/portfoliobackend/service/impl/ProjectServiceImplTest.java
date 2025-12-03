@@ -517,12 +517,6 @@ class ProjectServiceImplTest {
         verify(projectMapper, never()).toResponse(any());
     }
 
-    @Test
-    void deleteProject_throwsUnsupportedOperationException() {
-        assertThatThrownBy(() -> projectService.deleteProject(1L))
-                .isInstanceOf(UnsupportedOperationException.class)
-                .hasMessage("Not implemented yet");
-    }
 
     @Test
     void getProjectsByServiceCategory_throwsUnsupportedOperationException() {
@@ -715,5 +709,59 @@ class ProjectServiceImplTest {
                 () -> projectService.deleteImageFromProject(1L, 999L));
 
         verify(imageRepository, never()).delete(any());
+    }
+
+    @Test
+    @DisplayName("deleteProject - Success")
+    void deleteProject_WithValidId_DeletesProjectAndImages() {
+        // Arrange
+        Project project = new Project();
+        project.setId(1L);
+        project.setTitle("Test Project");
+
+        Image image1 = new Image();
+        image1.setId(1L);
+        image1.setUrl("/uploads/image1.jpg");
+        image1.setProject(project);
+
+        Image image2 = new Image();
+        image2.setId(2L);
+        image2.setUrl("/uploads/image2.jpg");
+        image2.setProject(project);
+
+        List<Image> images = new ArrayList<>();
+        images.add(image1);
+        images.add(image2);
+        project.setImages(images);
+
+        when(projectRepository.findById(1L)).thenReturn(Optional.of(project));
+        doNothing().when(imageStorageService).delete(anyString());
+        doNothing().when(imageRepository).deleteAll(anyList());
+        doNothing().when(projectRepository).delete(any(Project.class));
+
+        // Act
+        projectService.deleteProject(1L);
+
+        // Assert
+        verify(projectRepository).findById(1L);
+        verify(imageStorageService).delete("/uploads/image1.jpg");
+        verify(imageStorageService).delete("/uploads/image2.jpg");
+        verify(imageRepository).deleteAll(images);
+    }
+
+    @Test
+    @DisplayName("deleteProject - Project Not Found")
+    void deleteProject_WithInvalidId_ThrowsResourceNotFoundException() {
+        // Arrange
+        when(projectRepository.findById(999L)).thenReturn(Optional.empty());
+
+        // Act & Assert
+        assertThrows(ResourceNotFoundException.class,
+                () -> projectService.deleteProject(999L));
+
+        verify(projectRepository).findById(999L);
+        verify(imageStorageService, never()).delete(anyString());
+        verify(imageRepository, never()).deleteAll(anyList());
+        verify(projectRepository, never()).delete(any(Project.class));
     }
 }

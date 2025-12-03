@@ -220,4 +220,15 @@ public class ProjectController {
             );
         }
     }
+
+    // Deletes project and all associated images
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteProject(@PathVariable Long id) {
+        log.info("Received request to delete project with ID: {}", id);
+
+        projectService.deleteProject(id);
+
+        log.info("Successfully deleted project with ID: {}", id);
+        return ResponseEntity.noContent().build();
+    }
 }

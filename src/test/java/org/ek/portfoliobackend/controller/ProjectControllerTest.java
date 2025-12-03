@@ -28,7 +28,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -648,5 +648,32 @@ class ProjectControllerTest {
         // Act & Assert
         mockMvc.perform(delete("/api/projects/1/images/999"))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("DELETE /api/projects/{id} - Success")
+    void deleteProject_WithValidId_ReturnsNoContent() throws Exception {
+        // Arrange
+        doNothing().when(projectService).deleteProject(1L);
+
+        // Act & Assert
+        mockMvc.perform(delete("/api/projects/1"))
+                .andExpect(status().isNoContent());
+
+        verify(projectService).deleteProject(1L);
+    }
+
+    @Test
+    @DisplayName("DELETE /api/projects/{id} - Not Found")
+    void deleteProject_WithInvalidId_ReturnsNotFound() throws Exception {
+        // Arrange
+        doThrow(new ResourceNotFoundException("Project", 999L))
+                .when(projectService).deleteProject(999L);
+
+        // Act & Assert
+        mockMvc.perform(delete("/api/projects/999"))
+                .andExpect(status().isNotFound());
+
+        verify(projectService).deleteProject(999L);
     }
 }

@@ -135,8 +135,24 @@ public class ProjectServiceImpl implements ProjectService {
     }
 
     @Override
+    @Transactional
     public void deleteProject(Long id) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        // find project or throw 404
+        Project project = projectRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Project", id));
+
+        // first delete all images from storage
+        for (Image image : project.getImages()) {
+            try {
+                imageStorageService.delete(image.getUrl());
+            } catch (Exception e) {
+                // Log, but don't fail
+            }
+        }
+        // delete img records from db
+        imageRepository.deleteAll(project.getImages());
+        // delete project
+        projectRepository.delete(project);
     }
 
     @Override
