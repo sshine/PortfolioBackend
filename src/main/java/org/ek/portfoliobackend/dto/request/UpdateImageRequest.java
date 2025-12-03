@@ -1,24 +1,25 @@
-package org.ek.portfoliobackend.dto.response;
+package org.ek.portfoliobackend.dto.request;
+
 
 
 import org.ek.portfoliobackend.model.ImageType;
 
 
-public class ImageResponse {
-
+public class UpdateImageRequest {
     private Long id;
     private String url;
     private ImageType imageType;
-    private boolean isFeatured;
+    private Boolean isFeatured;
 
-    public ImageResponse(){}
-
-    public ImageResponse(Long id, String url, ImageType imageType, boolean isFeatured) {
+    public UpdateImageRequest(Long id, String url, ImageType imageType, Boolean isFeatured) {
         this.id = id;
         this.url = url;
         this.imageType = imageType;
         this.isFeatured = isFeatured;
     }
+
+   public UpdateImageRequest() {}
+
 
     public Long getId() {
         return id;
@@ -44,14 +45,13 @@ public class ImageResponse {
         this.imageType = imageType;
     }
 
-    public boolean getIsFeatured() {
+    public Boolean getIsFeatured() {
         return isFeatured;
     }
 
-    public void setIsFeatured(boolean featured) {
+    public void setIsFeatured(Boolean featured) {
         isFeatured = featured;
     }
-
 
 
 }

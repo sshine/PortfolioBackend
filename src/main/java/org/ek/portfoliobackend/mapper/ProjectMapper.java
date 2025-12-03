@@ -1,9 +1,12 @@
 package org.ek.portfoliobackend.mapper;
 
 import org.ek.portfoliobackend.dto.request.CreateProjectRequest;
+import org.ek.portfoliobackend.dto.request.UpdateImageRequest;
+import org.ek.portfoliobackend.dto.request.UpdateProjectRequest;
 import org.ek.portfoliobackend.dto.response.ImageResponse;
 import org.ek.portfoliobackend.dto.response.ProjectResponse;
 import org.ek.portfoliobackend.model.*;
+import java.util.List;
 
 import org.springframework.stereotype.Component;
 
@@ -52,6 +55,77 @@ public class ProjectMapper {
         return image;
     }
 
+
+    // Konverterer project til responseDTO
+
+    public ProjectResponse toProjectResponse(Project project) {
+
+        ProjectResponse response = new ProjectResponse();
+        response.setId(project.getId());
+        response.setTitle(project.getTitle());
+        response.setDescription(project.getDescription());
+        response.setExecutionDate(project.getExecutionDate());
+        response.setCreationDate(project.getCreationDate());
+        response.setWorkType(project.getWorkType());
+        response.setCustomerType(project.getCustomerType());
+
+        // Map alle billeder
+        List<ImageResponse> imageDtos = project.getImages()
+                .stream()
+                .map(this::toImageResponse)
+                .toList();
+
+        response.setImages(imageDtos);
+
+        return response;
+    }
+
+    // Patch-opdaterer et Project med de felter der er sat i request (null = ignorer).
+
+    public void updateProjectEntity(UpdateProjectRequest request, Project project) {
+
+        if (request.getTitle() != null) {
+            project.setTitle(request.getTitle());
+        }
+
+        if(request.getDescription() != null) {
+            project.setDescription(request.getDescription());
+        }
+
+        if (request.getWorkType() != null) {
+            project.setWorkType(request.getWorkType());
+        }
+
+        if (request.getCustomerType() != null) {
+            project.setCustomerType(request.getCustomerType());
+        }
+
+        if (request.getExecutionDate() != null) {
+            project.setExecutionDate(request.getExecutionDate());
+        }
+    }
+
+    // Patch-opdaterer et Image med de felter der er sat i request (null = ignorer).
+    public void updateImageEntity(UpdateImageRequest request, Image image) {
+
+        if (request.getUrl() != null) {
+            image.setUrl(request.getUrl());
+        }
+
+        if (request.getImageType() != null) {
+            image.setImageType(request.getImageType());
+        }
+
+        if (request.getIsFeatured() != null) {
+            image.setIsFeatured(request.getIsFeatured());
+        }
+    }
+
+
+
+
+
+
     /**
      * Konverterer Project entity til ProjectResponse DTO.
      * Inkluderer alle projekt felter og mapper images til response format.
@@ -92,7 +166,7 @@ public class ProjectMapper {
         response.setId(image.getId());
         response.setUrl(image.getUrl());
         response.setImageType(image.getImageType());
-        response.setFeatured(image.getIsFeatured());
+        response.setIsFeatured(image.getIsFeatured());
         return response;
     }
 }

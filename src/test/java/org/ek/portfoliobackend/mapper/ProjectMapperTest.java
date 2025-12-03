@@ -1,6 +1,8 @@
 package org.ek.portfoliobackend.mapper;
 
 import org.ek.portfoliobackend.dto.request.CreateProjectRequest;
+import org.ek.portfoliobackend.dto.request.UpdateImageRequest;
+import org.ek.portfoliobackend.dto.request.UpdateProjectRequest;
 import org.ek.portfoliobackend.model.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -146,4 +148,60 @@ class ProjectMapperTest {
         assertThat(image.getProject().getId()).isEqualTo(5L);
         assertThat(image.getProject().getTitle()).isEqualTo("Relationship Test");
     }
-}
+
+
+    // Opdatering af
+    @Test
+    void updateProjectEntity() {
+        // Arrange
+        Project project = new Project();
+        project.setTitle("Old");
+        project.setDescription("Old desc");
+        project.setWorkType(WorkType.FACADE_CLEANING);
+        project.setCustomerType(CustomerType.PRIVATE_CUSTOMER);
+        project.setExecutionDate(LocalDate.of(2020,1,1));
+
+        UpdateProjectRequest req = new UpdateProjectRequest();
+        req.setTitle("New Title");
+        req.setDescription(null);    // should be ignored
+        req.setWorkType(WorkType.ROOF_CLEANING);
+        req.setCustomerType(null);   // should be ignored
+        req.setExecutionDate(LocalDate.of(2030,5,5));
+
+        // Act
+        projectMapper.updateProjectEntity(req, project);
+
+        // Assert
+        assertThat(project.getTitle()).isEqualTo("New Title");
+        assertThat(project.getDescription()).isEqualTo("Old desc");  // unchanged
+        assertThat(project.getWorkType()).isEqualTo(WorkType.ROOF_CLEANING);
+        assertThat(project.getCustomerType()).isEqualTo(CustomerType.PRIVATE_CUSTOMER); // unchanged
+        assertThat(project.getExecutionDate()).isEqualTo(LocalDate.of(2030,5,5));
+    }
+
+    @Test
+    void updateImageEntity_shouldUpdateOnlyNonNullFields() {
+        // Arrange
+        Image image = new Image();
+        image.setUrl("old.jpg");
+        image.setImageType(ImageType.BEFORE);
+        image.setIsFeatured(false);
+
+        UpdateImageRequest req = new UpdateImageRequest();
+        req.setUrl("new.jpg");
+        req.setImageType(null);       // should be ignored
+        req.setIsFeatured(true);
+
+        // Act
+        projectMapper.updateImageEntity(req, image);
+
+        // Assert
+        assertThat(image.getUrl()).isEqualTo("new.jpg");
+        assertThat(image.getImageType()).isEqualTo(ImageType.BEFORE);   // unchanged
+        assertThat(image.getIsFeatured()).isTrue();
+    }
+
+    }
+
+
+
