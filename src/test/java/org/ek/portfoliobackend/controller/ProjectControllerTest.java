@@ -82,30 +82,30 @@ class ProjectControllerTest {
                 new ImageUploadRequest(ImageType.AFTER, true)
         );
 
-        // Setup expected response
-        expectedResponse = ProjectResponse.builder()
-                .id(1L)
-                .title("Test Facade Cleaning Project")
-                .description("Complete cleaning of building facade")
-                .executionDate(LocalDate.of(2024, 6, 15))
-                .creationDate(LocalDate.now())
-                .workType(WorkType.FACADE_CLEANING)
-                .customerType(CustomerType.BUSINESS_CUSTOMER)
-                .images(Arrays.asList(
-                        ImageResponse.builder()
-                                .id(1L)
-                                .url("/uploads/before.jpg")
-                                .imageType(ImageType.BEFORE)
-                                .isFeatured(false)
-                                .build(),
-                        ImageResponse.builder()
-                                .id(2L)
-                                .url("/uploads/after.jpg")
-                                .imageType(ImageType.AFTER)
-                                .isFeatured(true)
-                                .build()
-                ))
-                .build();
+//        // Setup expected response
+//        expectedResponse = ProjectResponse.builder()
+//                .id(1L)
+//                .title("Test Facade Cleaning Project")
+//                .description("Complete cleaning of building facade")
+//                .executionDate(LocalDate.of(2024, 6, 15))
+//                .creationDate(LocalDate.now())
+//                .workType(WorkType.FACADE_CLEANING)
+//                .customerType(CustomerType.BUSINESS_CUSTOMER)
+//                .images(Arrays.asList(
+//                        ImageResponse.builder()
+//                                .id(1L)
+//                                .url("/uploads/before.jpg")
+//                                .imageType(ImageType.BEFORE)
+//                                .isFeatured(false)
+//                                .build(),
+//                        ImageResponse.builder()
+//                                .id(2L)
+//                                .url("/uploads/after.jpg")
+//                                .imageType(ImageType.AFTER)
+//                                .isFeatured(true)
+//                                .build()
+//                ))
+//                .build();
     }
 
     @Test
