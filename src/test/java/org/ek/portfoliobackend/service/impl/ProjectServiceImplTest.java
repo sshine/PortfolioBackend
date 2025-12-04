@@ -16,8 +16,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Sort;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -463,6 +465,7 @@ TDD test for old update image method
 //        verify(imageRepository).save(existingImage);
 //    }
 
+
     // ---- TDD tests for delete ----
 
 
@@ -470,18 +473,19 @@ TDD test for old update image method
     @Test
     void deleteProject_shouldDeleteAllImagesAndProject() {
 
+        // Given
         existingImage.setUrl("/uploads/old.jpg");
         mockProject.setImages(List.of(existingImage));
 
         when(projectRepository.findById(1L)).thenReturn(Optional.of(mockProject));
 
+        // When
         projectService.deleteProject(1L);
 
+        // Then
         verify(imageStorageService).delete("/uploads/old.jpg");
         verify(projectRepository).delete(mockProject);
     }
-
-
 
     // Throw exception if no project is found
     @Test
@@ -496,6 +500,87 @@ TDD test for old update image method
         verify(imageStorageService, never()).delete(anyString());
         verify(projectRepository, never()).delete(any());
     }
+
+    // ---- TDD tests for order by creation date ----
+
+    // Should return projects in ascending order
+    @Test
+    @DisplayName("getAllProjectsOrderedByDate should sort by creationDate ascending when sortDirection is 'asc'")
+    void shouldSortAscendingWhenAsc() {
+
+        // Arrange
+        when(projectRepository.findAll(any(Sort.class)))
+                .thenReturn(List.of(mockProject));
+
+        when(projectMapper.toResponse(any(Project.class)))
+                .thenReturn(mockProjectResponse);
+
+        // Act
+        projectService.getAllProjectsOrderedByDate("asc");
+
+        // Assert
+        ArgumentCaptor<Sort> sortCaptor = ArgumentCaptor.forClass(Sort.class);
+        verify(projectRepository).findAll(sortCaptor.capture());
+
+        Sort usedSort = sortCaptor.getValue();
+        Sort.Order order = usedSort.getOrderFor("creationDate");
+
+        assertNotNull(order);
+        assertEquals(Sort.Direction.ASC, order.getDirection());
+    }
+
+    // Sort projects default in descending order
+    @Test
+    @DisplayName("getAllProjectsOrderedByDate should default to descending sort when sortDirection is null")
+    void shouldSortDescendingByDefault() {
+
+        // Arrange
+        when(projectRepository.findAll(any(Sort.class)))
+                .thenReturn(List.of(mockProject));
+
+        when(projectMapper.toResponse(any(Project.class)))
+                .thenReturn(mockProjectResponse);
+
+        // Act
+        projectService.getAllProjectsOrderedByDate(null);
+
+        // Assert
+        ArgumentCaptor<Sort> sortCaptor = ArgumentCaptor.forClass(Sort.class);
+        verify(projectRepository).findAll(sortCaptor.capture());
+
+        Sort usedSort = sortCaptor.getValue();
+        Sort.Order order = usedSort.getOrderFor("creationDate");
+
+        assertNotNull(order);
+        assertEquals(Sort.Direction.DESC, order.getDirection());
+    }
+
+    // Mapper is called on each project
+    @Test
+    @DisplayName("getAllProjectsOrderedByDate should map all projects to ProjectResponse list")
+    void shouldMapAllProjects() {
+
+        // Arrange
+        Project p1 = new Project();
+        Project p2 = new Project();
+        List<Project> projects = List.of(p1, p2);
+
+        when(projectRepository.findAll(any(Sort.class)))
+                .thenReturn(projects);
+
+        when(projectMapper.toResponse(any(Project.class)))
+                .thenReturn(new ProjectResponse());
+
+        // Act
+        List<ProjectResponse> responseList =
+                projectService.getAllProjectsOrderedByDate("asc");
+
+        // Assert
+        verify(projectMapper, times(2)).toResponse(any(Project.class));
+        assertEquals(2, responseList.size());
+    }
+
+
 
 
 
