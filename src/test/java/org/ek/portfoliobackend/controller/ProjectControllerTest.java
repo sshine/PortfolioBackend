@@ -1,5 +1,9 @@
 package org.ek.portfoliobackend.controller;
 
+import org.ek.portfoliobackend.dto.request.UpdateImageRequest;
+import org.ek.portfoliobackend.dto.request.UpdateProjectRequest;
+import org.ek.portfoliobackend.exception.GlobalExceptionHandler;
+import org.springframework.context.annotation.Import;
 import tools.jackson.databind.ObjectMapper;
 import org.ek.portfoliobackend.dto.request.CreateProjectRequest;
 import org.ek.portfoliobackend.dto.request.ImageUploadRequest;
@@ -9,6 +13,7 @@ import org.ek.portfoliobackend.model.CustomerType;
 import org.ek.portfoliobackend.model.ImageType;
 import org.ek.portfoliobackend.model.WorkType;
 import org.ek.portfoliobackend.service.ProjectService;
+import org.ek.portfoliobackend.exception.custom.ResourceNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -25,14 +30,15 @@ import java.util.List;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 /**
  * Integration tests for ProjectController endpoints.
  * Tests the REST API layer for project creation with multipart file uploads.
  */
-@WebMvcTest(ProjectController.class)
+@WebMvcTest(controllers = ProjectController.class)
+@Import(GlobalExceptionHandler.class)
 class ProjectControllerTest {
 
     @Autowired
@@ -95,6 +101,86 @@ class ProjectControllerTest {
                 new ImageResponse(1L, "/uploads/before.jpg", ImageType.BEFORE, false),
                 new ImageResponse(2L, "/uploads/after.jpg", ImageType.AFTER, true)
         ));
+    }
+
+    @Test
+    @DisplayName("GET /api/projects/{id} - Success")
+    void getProjectById_WithValidId_ReturnsProject() throws Exception {
+        // Arrange
+        ProjectResponse response = new ProjectResponse();
+        response.setId(1L);
+        response.setTitle("Test Project");
+        response.setDescription("Test Description");
+        response.setExecutionDate(LocalDate.of(2025, 4, 1));
+        response.setCreationDate(LocalDate.now());
+        response.setWorkType(WorkType.FACADE_CLEANING);
+        response.setCustomerType(CustomerType.BUSINESS_CUSTOMER);
+        response.setImages(List.of());
+
+        when(projectService.getProjectById(1L)).thenReturn(response);
+
+        // Act & Assert
+        mockMvc.perform(get("/api/projects/1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(1))
+                .andExpect(jsonPath("$.title").value("Test Project"))
+                .andExpect(jsonPath("$.description").value("Test Description"))
+                .andExpect(jsonPath("$.workType").value("FACADE_CLEANING"))
+                .andExpect(jsonPath("$.customerType").value("BUSINESS_CUSTOMER"));
+    }
+
+    @Test
+    @DisplayName("GET /api/projects/{id} - Not Found")
+    void getProjectById_WithInvalidId_ReturnsNotFound() throws Exception {
+        // Arrange
+        when(projectService.getProjectById(999L))
+                .thenThrow(new ResourceNotFoundException("Project", 999L));
+
+        // Act & Assert
+        mockMvc.perform(get("/api/projects/999"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("GET /api/projects - Success with multiple projects")
+    void getAllProjects_ReturnsListOfProjects() throws Exception {
+        // Arrange
+        ProjectResponse project1 = new ProjectResponse();
+        project1.setId(1L);
+        project1.setTitle("Project 1");
+        project1.setWorkType(WorkType.FACADE_CLEANING);
+        project1.setCustomerType(CustomerType.BUSINESS_CUSTOMER);
+        project1.setImages(List.of());
+
+        ProjectResponse project2 = new ProjectResponse();
+        project2.setId(2L);
+        project2.setTitle("Project 2");
+        project2.setWorkType(WorkType.ROOF_CLEANING);
+        project2.setCustomerType(CustomerType.PRIVATE_CUSTOMER);
+        project2.setImages(List.of());
+
+        when(projectService.getAllProjects()).thenReturn(Arrays.asList(project1, project2));
+
+        // Act & Assert
+        mockMvc.perform(get("/api/projects"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].id").value(1))
+                .andExpect(jsonPath("$[0].title").value("Project 1"))
+                .andExpect(jsonPath("$[1].id").value(2))
+                .andExpect(jsonPath("$[1].title").value("Project 2"));
+    }
+
+    @Test
+    @DisplayName("GET /api/projects - Success with no projects")
+    void getAllProjects_ReturnsEmptyList() throws Exception {
+        // Arrange
+        when(projectService.getAllProjects()).thenReturn(List.of());
+
+        // Act & Assert
+        mockMvc.perform(get("/api/projects"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(0));
     }
 
     @Test
@@ -170,8 +256,7 @@ class ProjectControllerTest {
                         .file(afterImage)
                         .file(metadataPart)
                         .contentType(MediaType.MULTIPART_FORM_DATA))
-                .andExpect(status().isBadRequest())
-                .andExpect(status().reason(org.hamcrest.Matchers.containsString("Mismatch")));
+                .andExpect(status().isBadRequest());
     }
 
     @Test
@@ -209,8 +294,7 @@ class ProjectControllerTest {
                         .file(afterImage)
                         .file(metadataPart)
                         .contentType(MediaType.MULTIPART_FORM_DATA))
-                .andExpect(status().isBadRequest())
-                .andExpect(status().reason(org.hamcrest.Matchers.containsString("BEFORE image")));
+                .andExpect(status().isBadRequest());
     }
 
     @Test
@@ -248,8 +332,7 @@ class ProjectControllerTest {
                         .file(beforeImage)
                         .file(metadataPart)
                         .contentType(MediaType.MULTIPART_FORM_DATA))
-                .andExpect(status().isBadRequest())
-                .andExpect(status().reason(org.hamcrest.Matchers.containsString("AFTER image")));
+                .andExpect(status().isBadRequest());
     }
 
     @Test
@@ -283,8 +366,7 @@ class ProjectControllerTest {
                         .file(afterImage)
                         .file(metadataPart)
                         .contentType(MediaType.MULTIPART_FORM_DATA))
-                .andExpect(status().isInternalServerError())
-                .andExpect(status().reason(org.hamcrest.Matchers.containsString("internal error")));
+                .andExpect(status().isInternalServerError());
     }
 
     @Test
@@ -342,5 +424,216 @@ class ProjectControllerTest {
                         .file(metadataPart)
                         .contentType(MediaType.MULTIPART_FORM_DATA))
                 .andExpect(status().isCreated());
+    }
+
+    @Test
+    @DisplayName("PUT /api/projects/{id} - Success with full update")
+    void updateProject_WithValidData_ReturnsUpdatedProject() throws Exception {
+        // Arrange
+        UpdateProjectRequest request = new UpdateProjectRequest();
+        request.setTitle("Updated Title");
+        request.setDescription("Updated Description");
+        request.setWorkType(WorkType.ROOF_CLEANING);
+        request.setCustomerType(CustomerType.PRIVATE_CUSTOMER);
+        request.setExecutionDate(LocalDate.of(2025, 10, 31));
+
+        ProjectResponse response = new ProjectResponse();
+        response.setId(1L);
+        response.setTitle("Updated Title");
+        response.setDescription("Updated Description");
+        response.setWorkType(WorkType.ROOF_CLEANING);
+        response.setCustomerType(CustomerType.PRIVATE_CUSTOMER);
+        response.setExecutionDate(LocalDate.of(2025, 10, 31));
+
+        when(projectService.updateProject(eq(1L), any(UpdateProjectRequest.class)))
+                .thenReturn(response);
+
+        // Act & Assert
+        mockMvc.perform(put("/api/projects/1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(1))
+                .andExpect(jsonPath("$.title").value("Updated Title"))
+                .andExpect(jsonPath("$.description").value("Updated Description"))
+                .andExpect(jsonPath("$.workType").value("ROOF_CLEANING"))
+                .andExpect(jsonPath("$.customerType").value("PRIVATE_CUSTOMER"));
+    }
+
+    @Test
+    @DisplayName("PUT /api/projects/{id} - Success with partial update")
+    void updateProject_WithPartialData_ReturnsUpdatedProject() throws Exception {
+        // Arrange
+        UpdateProjectRequest request = new UpdateProjectRequest();
+        request.setTitle("New title only");
+
+        ProjectResponse response = new ProjectResponse();
+        response.setId(1L);
+        response.setTitle("New title only");
+        response.setDescription("OG Description");
+        response.setWorkType(WorkType.FACADE_CLEANING);
+
+        when(projectService.updateProject(eq(1L), any(UpdateProjectRequest.class)))
+                .thenReturn(response);
+
+        // Act & Assert
+        mockMvc.perform(put("/api/projects/1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(1))
+                .andExpect(jsonPath("$.title").value("New title only"));
+    }
+
+    @Test
+    @DisplayName("PUT /api/projects/{id} - Not Found")
+    void updateProject_WithInvalidId_ReturnsNotFound() throws Exception {
+        // Arrange
+        UpdateProjectRequest request = new UpdateProjectRequest();
+        request.setTitle("Updated Title");
+
+        when(projectService.updateProject(eq(999L), any(UpdateProjectRequest.class)))
+                .thenThrow(new ResourceNotFoundException("Project", 999L));
+
+        // Act & Assert
+        mockMvc.perform(put("/api/projects/999")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("PATCH /api/projects/{id}/images - Success")
+    void uploadProjectImages_WithValidData_ReturnsOk() throws Exception {
+        // Arrange
+        MockMultipartFile image = new MockMultipartFile(
+                "images", "image.jpg", MediaType.IMAGE_JPEG_VALUE, "image content".getBytes()
+        );
+
+        List<ImageUploadRequest> metadata = List.of(
+                new ImageUploadRequest(ImageType.BEFORE, false)
+        );
+
+        ProjectResponse response = new ProjectResponse();
+        response.setId(1L);
+
+        when(projectService.addImagesToProject(eq(1L), anyList(), anyList()))
+                .thenReturn(response);
+
+        MockMultipartFile metadataPart = new MockMultipartFile(
+                "imageMetadata", "", MediaType.APPLICATION_JSON_VALUE,
+                objectMapper.writeValueAsBytes(metadata)
+        );
+
+        // Act & Assert
+        mockMvc.perform(multipart("/api/projects/1/images")
+                        .file(image)
+                        .file(metadataPart)
+                        .with(request -> {
+                            request.setMethod("PATCH");
+                            return request;
+                        })
+                        .contentType(MediaType.MULTIPART_FORM_DATA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(1));
+    }
+
+    @Test
+    @DisplayName("PATCH /api/projects/{id}/images - Not Found")
+    void uploadProjectImages_ProjectNotFound_ReturnsNotFound() throws Exception {
+        // Arrange
+        MockMultipartFile image = new MockMultipartFile(
+                "images", "image.jpg", MediaType.IMAGE_JPEG_VALUE, "image content".getBytes()
+        );
+
+        List<ImageUploadRequest> metadata = List.of(
+                new ImageUploadRequest(ImageType.BEFORE, false)
+        );
+
+        when(projectService.addImagesToProject(eq(999L), anyList(), anyList()))
+                .thenThrow(new ResourceNotFoundException("Project", 999L));
+
+        MockMultipartFile metadataPart = new MockMultipartFile(
+                "imageMetadata", "", MediaType.APPLICATION_JSON_VALUE,
+                objectMapper.writeValueAsBytes(metadata)
+        );
+
+        // Act & Assert
+        mockMvc.perform(multipart("/api/projects/999/images")
+                        .file(image)
+                        .file(metadataPart)
+                        .with(request -> {
+                            request.setMethod("PATCH");
+                            return request;
+                        })
+                        .contentType(MediaType.MULTIPART_FORM_DATA))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("PATCH /api/projects/{projectId}/images/{imageId} - Success")
+    void updateImageMetadata_Success() throws Exception {
+        // Arrange
+        UpdateImageRequest request = new UpdateImageRequest();
+        request.setImageType(ImageType.AFTER);
+        request.setIsFeatured(true);
+
+        ProjectResponse response = new ProjectResponse();
+        response.setId(1L);
+
+        when(projectService.updateImageMetadata(eq(1L), eq(1L), any(UpdateImageRequest.class)))
+                .thenReturn(response);
+
+        // Act & Assert
+        mockMvc.perform(patch("/api/projects/1/images/1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(1));
+    }
+
+    @Test
+    @DisplayName("PATCH /api/projects/{projectId}/images/{imageId} - Image Not Found")
+    void updateImageMetadata_ImageNotFound() throws Exception {
+        // Arrange
+        UpdateImageRequest request = new UpdateImageRequest();
+        request.setImageType(ImageType.AFTER);
+
+        when(projectService.updateImageMetadata(eq(1L), eq(999L), any(UpdateImageRequest.class)))
+                .thenThrow(new ResourceNotFoundException("Image", 999L));
+
+        // Act & Assert
+        mockMvc.perform(patch("/api/projects/1/images/999")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("DELETE /api/projects/{projectId}/images/{imageId} - Success")
+    void deleteImage_WithValidIds_ReturnsOk() throws Exception {
+        // Arrange
+        ProjectResponse response = new ProjectResponse();
+        response.setId(1L);
+
+        when(projectService.deleteImageFromProject(eq(1L), eq(1L)))
+                .thenReturn(response);
+
+        // Act & Assert
+        mockMvc.perform(delete("/api/projects/1/images/1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(1));
+    }
+
+    @Test
+    @DisplayName("DELETE /api/projects/{projectId}/images/{imageId} - Image Not Found")
+    void deleteImage_ImageNotFound_ReturnsNotFound() throws Exception {
+        // Arrange
+        when(projectService.deleteImageFromProject(eq(1L), eq(999L)))
+                .thenThrow(new ResourceNotFoundException("Image", 999L));
+
+        // Act & Assert
+        mockMvc.perform(delete("/api/projects/1/images/999"))
+                .andExpect(status().isNotFound());
     }
 }

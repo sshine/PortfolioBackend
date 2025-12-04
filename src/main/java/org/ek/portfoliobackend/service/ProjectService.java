@@ -49,4 +49,12 @@ public interface ProjectService {
     //get all projects ordered by creation date (newest first)
     List<ProjectResponse> getAllProjectsOrderedByDate();
 
+    //add images to existing project
+    ProjectResponse addImagesToProject(Long projectId, List<MultipartFile> images, List<ImageUploadRequest> imageMetadata);
+
+    //update image metadata for existing image in project
+    ProjectResponse updateImageMetadata(Long projectId, Long imageId, UpdateImageRequest request);
+
+    //remove image from project
+    ProjectResponse deleteImageFromProject(Long projectId, Long imageId);
 }
