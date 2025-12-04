@@ -269,13 +269,23 @@ public class ProjectServiceImpl implements ProjectService {
     @Override
     @Transactional
     public void deleteProject(Long id) {
+        Project project = projectRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Project", id));
 
-        Project project = findProjectById(id);
+        // Delete image files from storage
+        for (Image image : project.getImages()) {
+            try {
+                imageStorageService.delete(image.getUrl());
+            } catch (Exception e) {
+                // Log but don't fail
+            }
+        }
 
-        deleteAllImages(project);
+        // Delete image records from db
+        imageRepository.deleteAll(project.getImages());
 
+        // Delete project
         projectRepository.delete(project);
-
     }
 
     @Override
@@ -368,7 +378,7 @@ public class ProjectServiceImpl implements ProjectService {
     private Project findProjectById(Long id) {
 
         return projectRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Project not found with id " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Project", id));
     }
 
     // --- Helper for update image ---
@@ -376,7 +386,7 @@ public class ProjectServiceImpl implements ProjectService {
     private Image findImageById(Long imageId) {
 
         return imageRepository.findById(imageId)
-                .orElseThrow(() -> new ResourceNotFoundException("Image not found with id " + imageId));
+                .orElseThrow(() -> new ResourceNotFoundException("Image", imageId));
     }
 
     // --- Helper for delete image ---

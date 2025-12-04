@@ -13,7 +13,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
@@ -68,8 +67,6 @@ public class ProjectController {
      * @param images List of image files to upload
      * @param imageMetadata Metadata for each image (imageType, isFeatured)
      * @return ResponseEntity with the created project and HTTP 201 status
-     * @throws ResponseStatusException with BAD_REQUEST if validation fails
-     * @throws ResponseStatusException with INTERNAL_SERVER_ERROR if storage or persistence fails
      */
     @PostMapping(consumes = "multipart/form-data")
     public ResponseEntity<ProjectResponse> createProject(
@@ -178,5 +175,16 @@ public class ProjectController {
 
         log.info("Successfully deleted image ID: {} from project ID: {}", imageId, projectId);
         return ResponseEntity.ok(updatedProject);
+    }
+
+    // Deletes project and all associated images
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteProject(@PathVariable Long id) {
+        log.info("Received request to delete project with ID: {}", id);
+
+        projectService.deleteProject(id);
+
+        log.info("Successfully deleted project with ID: {}", id);
+        return ResponseEntity.noContent().build();
     }
 }
