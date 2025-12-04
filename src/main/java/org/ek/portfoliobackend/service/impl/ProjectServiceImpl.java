@@ -4,6 +4,7 @@ import org.ek.portfoliobackend.dto.request.CreateProjectRequest;
 import org.ek.portfoliobackend.dto.request.ImageUploadRequest;
 import org.ek.portfoliobackend.dto.request.UpdateImageRequest;
 import org.ek.portfoliobackend.dto.request.UpdateProjectRequest;
+import org.ek.portfoliobackend.dto.response.ImageResponse;
 import org.ek.portfoliobackend.dto.response.ProjectResponse;
 import org.ek.portfoliobackend.mapper.ProjectMapper;
 import org.ek.portfoliobackend.model.CustomerType;
@@ -102,6 +103,7 @@ public class ProjectServiceImpl implements ProjectService {
         }
     }
 
+    // Update project
     @Override
     @Transactional
     public ProjectResponse updateProject(Long id, UpdateProjectRequest request) {
@@ -118,6 +120,26 @@ public class ProjectServiceImpl implements ProjectService {
         // return response DTO
         return projectMapper.toResponse(updatedProject);
     }
+
+    // Update image
+    @Override
+    @Transactional
+    public ImageResponse updateImage(Long imageId, UpdateImageRequest request) {
+
+        Image image = findImageById(imageId);
+
+        deleteImageUrl(image, request);
+
+        // Updates the image metadata
+        projectMapper.updateImageEntity(request, image);
+
+        // Saves new image
+        imageRepository.save(image);
+
+        return projectMapper.toImageResponse(image);
+
+    }
+
 
     @Override
     public ProjectResponse getProjectById(Long id) {
@@ -137,19 +159,19 @@ public class ProjectServiceImpl implements ProjectService {
     @Override
     @Transactional
     public void deleteProject(Long id) {
-        // find project or throw 404
+
         Project project = projectRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Project", id));
 
-        // first delete all images from storage
+        // Delete all associated images from storage
         for (Image image : project.getImages()) {
             try {
                 imageStorageService.delete(image.getUrl());
             } catch (Exception e) {
-                // Log, but don't fail
+                // Log but don't fail
             }
         }
-        // delete img records from db
+        // delete image records from db
         imageRepository.deleteAll(project.getImages());
         // delete project
         projectRepository.delete(project);
@@ -179,6 +201,8 @@ public class ProjectServiceImpl implements ProjectService {
     public List<ProjectResponse> getAllProjectsOrderedByDate() {
         throw new UnsupportedOperationException("Not implemented yet");
     }
+
+    // --- Helpers for create project ---
 
     /**
      * Validate that images and metadata lists are not null and have matching sizes
@@ -224,6 +248,29 @@ public class ProjectServiceImpl implements ProjectService {
         if (!hasAfterImage) {
             throw new IllegalArgumentException("At least one AFTER image must be provided");
         }
+    }
+
+    // --- Helper for update project ---
+
+    private Project findProjectById(Long id) {
+        return projectRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Project", id));
+    }
+
+    private Image findImageById(Long imageId) {
+        return imageRepository.findById(imageId)
+                .orElseThrow(() -> new ResourceNotFoundException("Image", imageId));
+    }
+
+    // --- Helper for delete image ---
+
+    private void deleteImageUrl(Image image, UpdateImageRequest request) {
+
+        // If URL changes, delete the old one
+        if (request.getUrl() != null && !request.getUrl().equals(image.getUrl())) {
+            imageStorageService.delete(image.getUrl());
+        }
+
     }
 
     @Override

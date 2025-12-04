@@ -6,13 +6,13 @@ import org.ek.portfoliobackend.dto.request.ImageUploadRequest;
 import org.ek.portfoliobackend.dto.request.UpdateImageRequest;
 import org.ek.portfoliobackend.dto.request.UpdateProjectRequest;
 import org.ek.portfoliobackend.dto.response.ProjectResponse;
+import org.ek.portfoliobackend.exception.custom.ResourceNotFoundException;
 import org.ek.portfoliobackend.service.ProjectService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
@@ -63,8 +63,6 @@ public class ProjectController {
      * @param images List of image files to upload
      * @param imageMetadata Metadata for each image (imageType, isFeatured)
      * @return ResponseEntity with the created project and HTTP 201 status
-     * @throws ResponseStatusException with BAD_REQUEST if validation fails
-     * @throws ResponseStatusException with INTERNAL_SERVER_ERROR if storage or persistence fails
      */
     @PostMapping(consumes = "multipart/form-data")
     public ResponseEntity<ProjectResponse> createProject(
@@ -76,37 +74,20 @@ public class ProjectController {
         log.debug("Request details - Images: {}, Metadata entries: {}",
                 images.size(), imageMetadata.size());
 
-        try {
-            // Validate image and metadata list sizes match
-            if (images.size() != imageMetadata.size()) {
-                String errorMsg = String.format(
-                        "Mismatch between images (%d) and metadata (%d) count",
-                        images.size(), imageMetadata.size()
-                );
-                log.warn(errorMsg);
-                throw new IllegalArgumentException(errorMsg);
-            }
-
-            ProjectResponse createdProject = projectService.createProject(request, images, imageMetadata);
-
-            log.info("Successfully created project with ID: {}", createdProject.getId());
-            return ResponseEntity.status(HttpStatus.CREATED).body(createdProject);
-
-        } catch (IllegalArgumentException e) {
-            // Validation errors (e.g., missing before/after images, invalid data)
-            log.warn("Validation error while creating project: {}", e.getMessage());
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Validation failed: " + e.getMessage()
+        //validate image and metadate list sizes match
+        if (images.size() != imageMetadata.size()) {
+            String errorMsg = String.format(
+                    "Mismatch between images (%d) and metadata (%d) count",
+                    images.size(), imageMetadata.size()
             );
-        } catch (Exception e) {
-            // Storage or other internal errors
-            log.error("Failed to create project: {}", e.getMessage(), e);
-            throw new ResponseStatusException(
-                    HttpStatus.INTERNAL_SERVER_ERROR,
-                    "Failed to create project due to internal error. Please try again later."
-            );
+            log.warn(errorMsg);
+            throw new IllegalArgumentException(errorMsg);
         }
+
+        ProjectResponse createdProject = projectService.createProject(request, images, imageMetadata);
+
+        log.info("Successfully created project with ID: {}", createdProject.getId());
+        return ResponseEntity.status(HttpStatus.CREATED).body(createdProject);
     }
 
     /**
@@ -128,36 +109,21 @@ public class ProjectController {
             @RequestPart("imageMetadata") List<ImageUploadRequest> imageMetadata) {
         log.info("Received request to upload images for project ID: {}", id);
 
-        try {
-            // Validate image and metadata list sizes match
-            if (images.size() != imageMetadata.size()) {
-                String errorMsg = String.format(
-                        "Mismatch between images (%d) and metadata (%d) count",
-                        images.size(), imageMetadata.size()
-                );
-                log.warn(errorMsg);
-                throw new IllegalArgumentException(errorMsg);
-            }
-
-            ProjectResponse updatedProject = projectService.addImagesToProject(id, images, imageMetadata);
-
-            log.info("Successfully uploaded {} images to project ID: {}", images.size(), id);
-            return ResponseEntity.ok(updatedProject);
-
-        } catch (IllegalArgumentException e) {
-            // Validation errors (missing before/after images, invalid data)
-            log.warn("Validation error while uploading images to project ID {}: {}", id, e.getMessage());
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Validation failed: " + e.getMessage()
+        // validate image and metadate list sizes match
+        if (images.size() != imageMetadata.size()) {
+            String errorMsg = String.format(
+                    "Mismatch between images (%d) and metadata (%d) count",
+                    images.size(), imageMetadata.size()
             );
-        } catch (Exception e) {
-            log.error("Failed to upload images to project ID {}: {}", id, e.getMessage(), e);
-            throw new ResponseStatusException(
-                    HttpStatus.INTERNAL_SERVER_ERROR,
-                    "Failed to upload images due to internal error. Please try again later."
-            );
+            log.warn(errorMsg);
+            throw new IllegalArgumentException(errorMsg);
         }
+
+        ProjectResponse updatedProject = projectService.addImagesToProject(id, images, imageMetadata);
+
+        log.info("Successfully uploaded {} images to project ID: {}", images.size(), id);
+        return ResponseEntity.ok(updatedProject);
+
     }
 
     /**
@@ -201,24 +167,10 @@ public class ProjectController {
                                                    @PathVariable Long imageId) {
         log.info("Received request to delete image ID: {} from project ID: {}", imageId, projectId);
 
-        try {
-            ProjectResponse updatedProject = projectService.deleteImageFromProject(projectId, imageId);
-            log.info("Successfully deleted image ID: {} from project ID: {}", imageId, projectId);
-            return ResponseEntity.ok(updatedProject);
+        ProjectResponse updatedProject = projectService.deleteImageFromProject(projectId, imageId);
 
-        } catch (IllegalArgumentException e) {
-            log.warn("Validation error while deleting image ID {} from project ID {}: {}", imageId, projectId, e.getMessage());
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Validation failed: " + e.getMessage()
-            );
-        } catch (Exception e) {
-            log.error("Failed to delete image ID {} from project ID {}: {}", imageId, projectId, e.getMessage(), e);
-            throw new ResponseStatusException(
-                    HttpStatus.INTERNAL_SERVER_ERROR,
-                    "Failed to delete image due to internal error. Please try again later."
-            );
-        }
+        log.info("Successfully deleted image ID: {} from project ID: {}", imageId, projectId);
+        return ResponseEntity.ok(updatedProject);
     }
 
     // Deletes project and all associated images

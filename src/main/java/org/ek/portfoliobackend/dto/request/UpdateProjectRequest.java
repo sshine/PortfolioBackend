@@ -21,7 +21,7 @@ public class UpdateProjectRequest {
 
     public UpdateProjectRequest() {}
 
-    private WorkType workType; // TODO: Kan vi ændre klassen til at hedde JobTypeCategory i stedet?
+    private WorkType workType;
     private CustomerType customerType;
     private LocalDate executionDate;
 
