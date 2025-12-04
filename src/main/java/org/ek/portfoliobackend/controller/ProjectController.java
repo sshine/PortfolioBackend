@@ -45,8 +45,10 @@ public class ProjectController {
 
     // retrieves all projects (images included)
     @GetMapping
-    public ResponseEntity<List<ProjectResponse>> getAllProjects(@RequestParam(name = "sort", required = false) String sortDirection) {
-        log.info("Received request to fetch all projects");
+    public ResponseEntity<List<ProjectResponse>> getAllProjects(
+            @RequestParam(name = "sort", required = false) String sortDirection) {
+
+        log.info("Received request to fetch all projects with sort direction '{}'", sortDirection);
 
         List<ProjectResponse> projects = projectService.getAllProjectsOrderedByDate(sortDirection);
 
