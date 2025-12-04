@@ -18,6 +18,7 @@ import org.ek.portfoliobackend.service.ImageStorageService;
 import org.ek.portfoliobackend.service.ProjectService;
 import org.hibernate.annotations.NotFound;
 import org.springframework.boot.context.config.ConfigDataResourceNotFoundException;
+import org.ek.portfoliobackend.exception.custom.ResourceNotFoundException;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -110,14 +111,14 @@ public class ProjectServiceImpl implements ProjectService {
     @Transactional
     public ProjectResponse updateProject(Long id, UpdateProjectRequest request) {
 
-        Project project = findProjectById(id);
-
+        // Update project fields with mapper
         projectMapper.updateProjectEntity(request, project);
 
-        projectRepository.save(project);
+        // Save updated project
+        Project updatedProject = projectRepository.save(project);
 
-        return projectMapper.toResponse(project);
-
+        // return response DTO
+        return projectMapper.toResponse(updatedProject);
     }
 
     // Update image
@@ -142,12 +143,17 @@ public class ProjectServiceImpl implements ProjectService {
 
     @Override
     public ProjectResponse getProjectById(Long id) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        Project project = projectRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Project", id));
+        return projectMapper.toResponse(project);
     }
 
     @Override
     public List<ProjectResponse> getAllProjects() {
-        throw new UnsupportedOperationException("Not implemented yet");
+        List<Project> projects = projectRepository.findAll();
+        return projects.stream()
+                .map(projectMapper::toResponse)
+                .toList();
     }
 
     @Override
@@ -281,6 +287,137 @@ public class ProjectServiceImpl implements ProjectService {
         }
     }
 
+
+    @Override
+    @Transactional
+    public ProjectResponse addImagesToProject(Long projectId,
+                                              List<MultipartFile> images,
+                                              List<ImageUploadRequest> imageMetadata) {
+        // Validate inputs
+        validateInputs(images, imageMetadata);
+        // Find existing project
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new ResourceNotFoundException("Project", projectId));
+
+        // store and create new image entities
+        List<Image> newImages = new ArrayList<>();
+        try {
+            for (int i = 0; i < images.size(); i++) {
+                MultipartFile imageFile = images.get(i);
+                ImageUploadRequest metadata = imageMetadata.get(i);
+
+                // Store the image file and get the URL
+                String imageUrl = imageStorageService.store(imageFile);
+
+                // Create image entity
+                Image image = projectMapper.toImage(
+                        imageUrl,
+                        metadata.getImageType(),
+                        metadata.isFeatured(),
+                        project
+                );
+
+                // Save image entity
+                Image savedImage = imageRepository.save(image);
+                newImages.add(savedImage);
+            }
+
+            // Add new images to project
+            project.getImages().addAll(newImages);
+
+            // convert to response DTO
+            return projectMapper.toResponse(project);
+        } catch (Exception e) {
+            // Cleanup stored images on failure
+            for (Image savedImage : newImages) {
+                try {
+                    imageStorageService.delete(savedImage.getUrl());
+                } catch (Exception cleanupException) {
+                    // Log cleanup failure but don't throw
+                }
+            }
+            throw new RuntimeException("Failed to store images: " + e.getMessage(), e);
+        }
+    }
+
+    @Override
+    @Transactional
+    public ProjectResponse updateImageMetadata(Long projectId, Long imageId, UpdateImageRequest request) {
+        // Verify project exists
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new ResourceNotFoundException("Project", projectId));
+
+        // Find the image within the project
+        Image image = imageRepository.findById(imageId)
+                .orElseThrow(() -> new ResourceNotFoundException("Image", imageId));
+
+        // Verify image belongs to this project
+        if (!image.getProject().getId().equals(projectId)) {
+            throw new IllegalArgumentException("Image does not belong to the specified project");
+        }
+
+        // Update image metadata using mapper
+        projectMapper.updateImageEntity(request, image);
+
+        // Save updated image
+        imageRepository.save(image);
+
+        // Return updated project
+        return projectMapper.toResponse(project);
+    }
+
+    @Override
+    @Transactional
+    public ProjectResponse deleteImageFromProject(Long projectId, Long imageId) {
+        // Verify project exists
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new ResourceNotFoundException("Project", projectId));
+
+        // find the image
+        Image image = imageRepository.findById(imageId)
+                .orElseThrow(() -> new ResourceNotFoundException("Image", imageId));
+
+        // Verify image belongs to this project
+        if (!image.getProject().getId().equals(projectId)) {
+            throw new IllegalArgumentException("Image does not belong to the specified project");
+        }
+
+        validateImageDeletion(project, image);
+
+        // delete physical file from storage
+        try {
+            imageStorageService.delete(image.getUrl());
+        } catch (Exception e) {
+
+        }
+
+        // remove image from project and delete from db
+        project.getImages().remove(image);
+        imageRepository.delete(image);
+
+        return projectMapper.toResponse(project);
+    }
+    /**
+     * Validate that deleting the image will not violate business rules
+     */
+    private void validateImageDeletion(Project project, Image imageToDelete) {
+        long beforeCount = project.getImages().stream()
+                .filter(img -> img.getImageType() == ImageType.BEFORE)
+                .filter(img -> !img.getId().equals(imageToDelete.getId()))
+                .count();
+
+        long afterCount = project.getImages().stream()
+                .filter(img -> img.getImageType() == ImageType.AFTER)
+                .filter(img -> !img.getId().equals(imageToDelete.getId()))
+                .count();
+
+        if (beforeCount < 1) {
+            throw new IllegalArgumentException("Cannot delete the last BEFORE image of the project");
+        }
+        if (afterCount < 1) {
+            throw new IllegalArgumentException("Cannot delete the last AFTER image of the project");
+        }
+    }
     // --- Helper for sort by date ---
     private Sort sortByDate(String sortDirection) {
 

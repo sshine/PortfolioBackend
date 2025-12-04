@@ -11,7 +11,9 @@ import org.ek.portfoliobackend.model.*;
 import org.ek.portfoliobackend.repository.ImageRepository;
 import org.ek.portfoliobackend.repository.ProjectRepository;
 import org.ek.portfoliobackend.service.ImageStorageService;
+import org.ek.portfoliobackend.exception.custom.ResourceNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -20,7 +22,6 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -500,17 +501,127 @@ class ProjectServiceImplTest {
 
 
     @Test
-    void getProjectById_throwsUnsupportedOperationException() {
-        assertThatThrownBy(() -> projectService.getProjectById(1L))
-                .isInstanceOf(UnsupportedOperationException.class)
-                .hasMessage("Not implemented yet");
+    @DisplayName("updateProject - throws ResourceNotFoundException when project not found")
+    void updateProject_WithInvalidId_ThrowsResourceNotFoundException() {
+        // Arrange
+        UpdateProjectRequest request = new UpdateProjectRequest();
+        request.setTitle("new title");
+
+        when(projectRepository.findById(999L)).thenReturn(Optional.empty());
+
+        // Act & Assert
+        assertThrows(ResourceNotFoundException.class,
+                () -> projectService.updateProject(999L, request),
+                "Expected ResourceNotFoundException when project not found");
+
+        verify(projectRepository).findById(999L);
+        verify(projectMapper, never()).updateProjectEntity(any(), any());
+        verify(projectRepository, never()).save(any());
+    }
+
+
+    @Test
+    @DisplayName("getProjectById - success")
+    void getProjectById_WithValidId_ReturnsProjectResponse() {
+        // Arrange
+        Project mockProject = new Project();
+        mockProject.setId(1L);
+        mockProject.setTitle("Test Project");
+        mockProject.setDescription("Test Description");
+        mockProject.setCreationDate(LocalDate.now());
+        mockProject.setExecutionDate(LocalDate.of(2025, 1, 4));
+        mockProject.setWorkType(WorkType.FACADE_CLEANING);
+        mockProject.setCustomerType(CustomerType.PRIVATE_CUSTOMER);
+
+        ProjectResponse mockResponse = new ProjectResponse();
+        mockResponse.setId(1L);
+        mockResponse.setTitle("Test Project");
+        mockResponse.setDescription("Test Description");
+
+        when(projectRepository.findById(1L)).thenReturn(Optional.of(mockProject));
+        when(projectMapper.toResponse(mockProject)).thenReturn(mockResponse);
+
+        // Act
+        ProjectResponse result = projectService.getProjectById(1L);
+
+        // Assert
+        assertNotNull(result);
+        assertEquals(1L, result.getId());
+        assertEquals("Test Project", result.getTitle());
+        verify(projectRepository).findById(1L);
+        verify(projectMapper).toResponse(mockProject);
     }
 
     @Test
-    void getAllProjects_throwsUnsupportedOperationException() {
-        assertThatThrownBy(() -> projectService.getAllProjects())
-                .isInstanceOf(UnsupportedOperationException.class)
-                .hasMessage("Not implemented yet");
+    @DisplayName("getProjectById - throws ResourceNotFoundException when project not found")
+    void getProjectById_WithInvalidId_ThrowsResourceNotFoundException() {
+        // Arrange
+        when(projectRepository.findById(999L)).thenReturn(Optional.empty());
+
+        // Act & Assert
+        ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class,
+                () -> projectService.getProjectById(999L));
+
+        assertTrue(exception.getMessage().contains("Project"));
+        assertTrue(exception.getMessage().contains("999"));
+        verify(projectRepository).findById(999L);
+        verify(projectMapper, never()).toResponse(any());
+    }
+
+
+    @Test
+    @DisplayName("getAllProjects - success")
+    void getAllProjects_ReturnsListOfProjectResponses() {
+        // Arrange
+        Project project1 = new Project();
+        project1.setId(1L);
+        project1.setTitle("Project 1");
+        project1.setDescription("Description 1");
+
+        Project project2 = new Project();
+        project2.setId(2L);
+        project2.setTitle("Project 2");
+        project2.setDescription("Description 2");
+
+        ProjectResponse response1 = new ProjectResponse();
+        response1.setId(1L);
+        response1.setTitle("Project 1");
+
+        ProjectResponse response2 = new ProjectResponse();
+        response2.setId(2L);
+        response2.setTitle("Project 2");
+
+        when(projectRepository.findAll()).thenReturn(List.of(project1, project2));
+        when(projectMapper.toResponse(project1)).thenReturn(response1);
+        when(projectMapper.toResponse(project2)).thenReturn(response2);
+
+        // Act
+        List<ProjectResponse> result = projectService.getAllProjects();
+
+        // Assert
+        assertNotNull(result);
+        assertEquals(2, result.size());
+        assertEquals(1L, result.get(0).getId());
+        assertEquals(2L, result.get(1).getId());
+        verify(projectRepository).findAll();
+        verify(projectMapper).toResponse(project1);
+        verify(projectMapper).toResponse(project2);
+    }
+
+    @Test
+    @DisplayName("getAllProjects - returns empty list when no projects exist")
+    void getAllProjects_NoProjectsExist_ReturnsEmptyList() {
+        // Arrange
+        when(projectRepository.findAll()).thenReturn(Collections.emptyList());
+
+        // Act
+        List<ProjectResponse> result = projectService.getAllProjects();
+
+        // Assert
+        assertNotNull(result);
+        assertTrue(result.isEmpty());
+        verify(projectRepository).findAll();
+        verify(projectMapper, never()).toResponse(any());
     }
 
 
@@ -551,5 +662,160 @@ class ProjectServiceImplTest {
                 .isInstanceOf(UnsupportedOperationException.class)
                 .hasMessage("Not implemented yet");
     }
-}
 
+    @Test
+    @DisplayName("addImagesToProject - Success")
+    void addImagesToProject_Success() {
+        // Arrange
+        Project project = new Project();
+        project.setId(1L);
+        project.setImages(new ArrayList<>());
+
+        List<MultipartFile> images = List.of(
+                new MockMultipartFile("img", "img.jpg", "image/jpeg", "content".getBytes())
+        );
+
+        List<ImageUploadRequest> metadata = List.of(
+                new ImageUploadRequest(ImageType.BEFORE, false)
+        );
+
+        when(projectRepository.findById(1L)).thenReturn(Optional.of(project));
+        when(imageStorageService.store(any())).thenReturn("/uploads/img.jpg");
+        when(projectMapper.toImage(anyString(), any(), anyBoolean(), any())).thenReturn(new Image());
+        when(imageRepository.save(any())).thenReturn(new Image());
+        when(projectMapper.toResponse(any())).thenReturn(new ProjectResponse());
+
+        // Act
+        ProjectResponse result = projectService.addImagesToProject(1L, images, metadata);
+
+        // Assert
+        assertNotNull(result);
+        verify(imageRepository).save(any());
+    }
+
+    @Test
+    @DisplayName("addImagesToProject - Project Not Found")
+    void addImagesToProject_ProjectNotFound_ThrowsException() {
+        // Arrange
+        when(projectRepository.findById(999L)).thenReturn(Optional.empty());
+
+        List<MultipartFile> images = List.of(
+                new MockMultipartFile("img", "img.jpg", "image/jpeg", "content".getBytes())
+        );
+
+        List<ImageUploadRequest> metadata = List.of(
+                new ImageUploadRequest(ImageType.BEFORE, false)
+        );
+
+        // Act & Assert
+        assertThrows(ResourceNotFoundException.class,
+                () -> projectService.addImagesToProject(999L, images, metadata));
+    }
+
+    @Test
+    @DisplayName("updateImageMetadata - Success")
+    void updateImageMetadata_Success() {
+        // Arrange
+        Project project = new Project();
+        project.setId(1L);
+
+        Image image = new Image();
+        image.setId(1L);
+        image.setProject(project);
+
+        UpdateImageRequest request = new UpdateImageRequest();
+        request.setImageType(ImageType.AFTER);
+        request.setIsFeatured(true);
+
+        when(projectRepository.findById(1L)).thenReturn(Optional.of(project));
+        when(imageRepository.findById(1L)).thenReturn(Optional.of(image));
+        when(imageRepository.save(any())).thenReturn(image);
+        when(projectMapper.toResponse(any())).thenReturn(new ProjectResponse());
+
+        // Act
+        ProjectResponse result = projectService.updateImageMetadata(1L, 1L, request);
+
+        // Assert
+        assertNotNull(result);
+        verify(projectMapper).updateImageEntity(request, image);
+        verify(imageRepository).save(image);
+    }
+
+    @Test
+    @DisplayName("updateImageMetadata - Image Not Found")
+    void updateImageMetadata_ImageNotFound() {
+        // Arrange
+        Project project = new Project();
+        project.setId(1L);
+
+        UpdateImageRequest request = new UpdateImageRequest();
+
+        when(projectRepository.findById(1L)).thenReturn(Optional.of(project));
+        when(imageRepository.findById(999L)).thenReturn(Optional.empty());
+
+        // Act & Assert
+        assertThrows(ResourceNotFoundException.class,
+                () -> projectService.updateImageMetadata(1L, 999L, request));
+    }
+
+    @Test
+    @DisplayName("deleteImageFromProject - Success")
+    void deleteImageFromProject_Success() {
+        // Arrange
+        Project project = new Project();
+        project.setId(1L);
+
+        Image beforeImage1 = new Image();
+        beforeImage1.setId(1L);
+        beforeImage1.setImageType(ImageType.BEFORE);
+        beforeImage1.setUrl("/uploads/before1.jpg");
+        beforeImage1.setProject(project);
+
+        Image beforeImage2 = new Image();
+        beforeImage2.setId(2L);
+        beforeImage2.setImageType(ImageType.BEFORE);
+        beforeImage2.setUrl("/uploads/before2.jpg");
+        beforeImage2.setProject(project);
+
+        Image afterImage = new Image();
+        afterImage.setId(3L);
+        afterImage.setImageType(ImageType.AFTER);
+        afterImage.setUrl("/uploads/after.jpg");
+        afterImage.setProject(project);
+
+        List<Image> images = new ArrayList<>();
+        images.add(beforeImage1);
+        images.add(beforeImage2);
+        images.add(afterImage);
+        project.setImages(images);
+
+        when(projectRepository.findById(1L)).thenReturn(Optional.of(project));
+        when(imageRepository.findById(2L)).thenReturn(Optional.of(beforeImage2));
+        when(projectMapper.toResponse(project)).thenReturn(new ProjectResponse());
+
+        // Act
+        ProjectResponse result = projectService.deleteImageFromProject(1L, 2L);
+
+        // Assert
+        assertNotNull(result);
+        verify(imageStorageService).delete("/uploads/before2.jpg");
+        verify(imageRepository).delete(beforeImage2);
+    }
+
+    @Test
+    @DisplayName("deleteImageFromProject - Image Not Found")
+    void deleteImageFromProject_ImageNotFound() {
+        // Arrange
+        Project project = new Project();
+        project.setId(1L);
+
+        when(projectRepository.findById(1L)).thenReturn(Optional.of(project));
+        when(imageRepository.findById(999L)).thenReturn(Optional.empty());
+
+        // Act & Assert
+        assertThrows(ResourceNotFoundException.class,
+                () -> projectService.deleteImageFromProject(1L, 999L));
+
+        verify(imageRepository, never()).delete(any());
+    }
+}
