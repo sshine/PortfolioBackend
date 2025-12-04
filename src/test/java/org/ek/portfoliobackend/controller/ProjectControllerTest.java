@@ -82,30 +82,19 @@ class ProjectControllerTest {
                 new ImageUploadRequest(ImageType.AFTER, true)
         );
 
-//        // Setup expected response
-//        expectedResponse = ProjectResponse.builder()
-//                .id(1L)
-//                .title("Test Facade Cleaning Project")
-//                .description("Complete cleaning of building facade")
-//                .executionDate(LocalDate.of(2024, 6, 15))
-//                .creationDate(LocalDate.now())
-//                .workType(WorkType.FACADE_CLEANING)
-//                .customerType(CustomerType.BUSINESS_CUSTOMER)
-//                .images(Arrays.asList(
-//                        ImageResponse.builder()
-//                                .id(1L)
-//                                .url("/uploads/before.jpg")
-//                                .imageType(ImageType.BEFORE)
-//                                .isFeatured(false)
-//                                .build(),
-//                        ImageResponse.builder()
-//                                .id(2L)
-//                                .url("/uploads/after.jpg")
-//                                .imageType(ImageType.AFTER)
-//                                .isFeatured(true)
-//                                .build()
-//                ))
-//                .build();
+        // Setup expected response
+        expectedResponse = new ProjectResponse();
+        expectedResponse.setId(1L);
+        expectedResponse.setTitle("Test Facade Cleaning Project");
+        expectedResponse.setDescription("Complete cleaning of building facade");
+        expectedResponse.setExecutionDate(LocalDate.of(2024, 6, 15));
+        expectedResponse.setCreationDate(LocalDate.now());
+        expectedResponse.setWorkType(WorkType.FACADE_CLEANING);
+        expectedResponse.setCustomerType(CustomerType.BUSINESS_CUSTOMER);
+        expectedResponse.setImages(List.of(
+                new ImageResponse(1L, "/uploads/before.jpg", ImageType.BEFORE, false),
+                new ImageResponse(2L, "/uploads/after.jpg", ImageType.AFTER, true)
+        ));
     }
 
     @Test

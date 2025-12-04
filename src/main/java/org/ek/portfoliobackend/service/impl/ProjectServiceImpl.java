@@ -117,7 +117,6 @@ public class ProjectServiceImpl implements ProjectService {
 
         return projectMapper.toResponse(project);
 
-
     }
 
     // Update image
@@ -151,8 +150,15 @@ public class ProjectServiceImpl implements ProjectService {
     }
 
     @Override
+    @Transactional
     public void deleteProject(Long id) {
-        throw new UnsupportedOperationException("Not implemented yet");
+
+        Project project = findProjectById(id);
+
+        deleteAllImages(project);
+
+        projectRepository.delete(project);
+
     }
 
     @Override
@@ -180,7 +186,7 @@ public class ProjectServiceImpl implements ProjectService {
         throw new UnsupportedOperationException("Not implemented yet");
     }
 
-    // --- Methods for create project ---
+    // --- Helpers for create project ---
 
     /**
      * Validate that images and metadata lists are not null and have matching sizes
@@ -228,7 +234,7 @@ public class ProjectServiceImpl implements ProjectService {
         }
     }
 
-    // --- Method for update project ---
+    // --- Helper for update project ---
 
     private Project findProjectById(Long id) {
 
@@ -236,13 +242,15 @@ public class ProjectServiceImpl implements ProjectService {
                 .orElseThrow(() -> new RuntimeException("Project not found with id " + id));
     }
 
-    // --- Methods for update image ---
+    // --- Helper for update image ---
 
     private Image findImageById(Long imageId) {
 
         return imageRepository.findById(imageId)
                 .orElseThrow(() -> new RuntimeException("Image not found with id " + imageId));
     }
+
+    // --- Helper for delete image ---
 
     private void deleteImageUrl(Image image, UpdateImageRequest request) {
 
@@ -251,6 +259,16 @@ public class ProjectServiceImpl implements ProjectService {
             imageStorageService.delete(image.getUrl());
         }
 
-
     }
+    // --- Method for delete project ---
+
+    private void deleteAllImages(Project project) {
+
+        for (Image image : project.getImages()) {
+            if (image.getUrl() != null) {
+                imageStorageService.delete(image.getUrl());
+            }
+        }
+    }
+
 }

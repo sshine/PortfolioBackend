@@ -121,6 +121,10 @@ class ProjectServiceImplTest {
         existingImage.setImageType(ImageType.BEFORE);
         existingImage.setIsFeatured(false);
 
+        // Setup mock image list
+        mockProject.setImages(List.of(existingImage));
+        existingImage.setProject(mockProject);
+
         // Setup mock update image request
         mockUpdateImageRequest = new UpdateImageRequest();
         mockUpdateImageRequest.setId(10L);
@@ -345,14 +349,6 @@ class ProjectServiceImplTest {
 
     // ---- TDD tests for update ----
 
-    @Test
-    void updateProject_throwsUnsupportedOperationException() {
-        UpdateProjectRequest request = new UpdateProjectRequest();
-
-        assertThatThrownBy(() -> projectService.updateProject(1L, request))
-                .isInstanceOf(UnsupportedOperationException.class)
-                .hasMessage("Not implemented yet");
-    }
 
 
     // Image not found
@@ -464,6 +460,42 @@ class ProjectServiceImplTest {
         verify(imageRepository).save(existingImage);
     }
 
+    // ---- TDD tests for delete ----
+
+
+    // Delete project and images
+    @Test
+    void deleteProject_shouldDeleteAllImagesAndProject() {
+
+        existingImage.setUrl("/uploads/old.jpg");
+        mockProject.setImages(List.of(existingImage));
+
+        when(projectRepository.findById(1L)).thenReturn(Optional.of(mockProject));
+
+        projectService.deleteProject(1L);
+
+        verify(imageStorageService).delete("/uploads/old.jpg");
+        verify(projectRepository).delete(mockProject);
+    }
+
+
+
+    // Throw exception if no project is found
+    @Test
+    void deleteProject_shouldThrowException_whenProjectNotFound() {
+
+        when(projectRepository.findById(1L)).thenReturn(Optional.empty());
+
+        assertThrows(RuntimeException.class, () ->
+                projectService.deleteProject(1L)
+        );
+
+        verify(imageStorageService, never()).delete(anyString());
+        verify(projectRepository, never()).delete(any());
+    }
+
+
+
     // ---- TDD tests ends ----
 
 
@@ -481,12 +513,7 @@ class ProjectServiceImplTest {
                 .hasMessage("Not implemented yet");
     }
 
-    @Test
-    void deleteProject_throwsUnsupportedOperationException() {
-        assertThatThrownBy(() -> projectService.deleteProject(1L))
-                .isInstanceOf(UnsupportedOperationException.class)
-                .hasMessage("Not implemented yet");
-    }
+
 
     @Test
     void getProjectsByServiceCategory_throwsUnsupportedOperationException() {
