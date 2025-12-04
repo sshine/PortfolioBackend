@@ -11,7 +11,9 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -146,6 +148,86 @@ public class GlobalExceptionHandler {
         );
 
         return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+    }
+
+    /**
+     * Håndterer MethodArgumentTypeMismatchException når query parameters har ugyldige enum værdier.
+     *
+     * Returnerer HTTP 400 Bad Request med information om:
+     * - Hvilken parameter der er ugyldig
+     * - Hvad den ugyldige værdi var
+     * - Hvilke værdier der er tilladte
+     *
+     * Eksempel: GET /api/projects?workType=INVALID_TYPE
+     *
+     * @param ex Exception med type mismatch information
+     * @param request HTTP request for at få path information
+     * @return ResponseEntity med ErrorResponse inklusiv allowedValues og HTTP 400 status
+     */
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ErrorResponse> handleMethodArgumentTypeMismatch(
+            MethodArgumentTypeMismatchException ex, HttpServletRequest request) {
+
+        logger.warn("Invalid parameter type - parameter: '{}', value: '{}', expectedType: '{}' - Path: {}",
+                ex.getName(),
+                ex.getValue(),
+                ex.getRequiredType() != null ? ex.getRequiredType().getSimpleName() : "unknown",
+                request.getRequestURI());
+        // Format: "Invalid parameter type - parameter: 'workType', value: 'INVALID_TYPE', expectedType: 'WorkType' - Path: /api/projects"
+
+        String message = buildEnumErrorMessage(ex);
+
+        ErrorResponse errorResponse = new ErrorResponse(
+                HttpStatus.BAD_REQUEST.value(),
+                "Invalid Parameter",
+                message,
+                request.getRequestURI()
+        );
+
+        // Tilføj ekstra information hvis det er en enum
+        if (ex.getRequiredType() != null && ex.getRequiredType().isEnum()) {
+            Map<String, Object> additionalInfo = new HashMap<>();
+            additionalInfo.put("parameter", ex.getName());
+            additionalInfo.put("invalidValue", ex.getValue());
+
+            Object[] enumConstants = ex.getRequiredType().getEnumConstants();
+            String allowedValues = Arrays.stream(enumConstants)
+                    .map(Object::toString)
+                    .collect(Collectors.joining(", "));
+            additionalInfo.put("allowedValues", allowedValues);
+
+            errorResponse.setAdditionalInfo(additionalInfo);
+        }
+
+        return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+    }
+
+    /**
+     * Bygger en brugervenlig fejlbesked for enum type mismatch.
+     *
+     * @param ex Exception med type mismatch information
+     * @return Formateret fejlbesked med tilladte værdier
+     */
+    private String buildEnumErrorMessage(MethodArgumentTypeMismatchException ex) {
+        if (ex.getRequiredType() != null && ex.getRequiredType().isEnum()) {
+            Object[] enumConstants = ex.getRequiredType().getEnumConstants();
+            String allowedValues = Arrays.stream(enumConstants)
+                    .map(Object::toString)
+                    .collect(Collectors.joining(", "));
+
+            return String.format(
+                    "Ugyldig værdi '%s' for parameter '%s'. Tilladte værdier er: [%s]",
+                    ex.getValue(),
+                    ex.getName(),
+                    allowedValues
+            );
+        }
+
+        return String.format(
+                "Ugyldig værdi '%s' for parameter '%s'",
+                ex.getValue(),
+                ex.getName()
+        );
     }
 
     /**
