@@ -298,20 +298,22 @@ public class ProjectServiceImpl implements ProjectService {
         throw new UnsupportedOperationException("Not implemented yet");
     }
 
-    // TODO
+
+    // Sort by creation date
     @Override
     public List<ProjectResponse> getAllProjectsOrderedByDate(String sortDirection) {
 
+        // Sort object
         Sort sort = sortByDate(sortDirection);
 
+        // Sort projects
         List<Project> projects = projectRepository.findAll(sort);
 
-
-        return projects.stream()
-                .map(projectMapper::toResponse)
-                .toList();
+        return mapProjectsToResponse(projects);
 
     }
+
+    // ------------------------------------------------ HELPER METHODS -------------------------------------------------
 
     // --- Helpers for create project ---
 
@@ -398,7 +400,22 @@ public class ProjectServiceImpl implements ProjectService {
         }
     }
 
+    // --- Helper for sort by date ---
+    private Sort sortByDate(String sortDirection) {
 
+        if (sortDirection != null && sortDirection.equalsIgnoreCase("asc")) {
+            return Sort.by(Sort.Direction.ASC, "creationDate");
+        }
+
+        // Default sort is the latest project first
+        return Sort.by(Sort.Direction.DESC, "creationDate");
+    }
+
+    // --- Helper for mapping of project list ---
+
+    private List<ProjectResponse> mapProjectsToResponse(List<Project> projects) {
+        return projects.stream().map(projectMapper::toResponse).toList();
+    }
 
     /**
      * Validate that deleting the image will not violate business rules
@@ -421,15 +438,6 @@ public class ProjectServiceImpl implements ProjectService {
             throw new IllegalArgumentException("Cannot delete the last AFTER image of the project");
         }
     }
-    // --- Helper for sort by date ---
-    private Sort sortByDate(String sortDirection) {
 
-        if (sortDirection != null && sortDirection.equalsIgnoreCase("asc")) {
-            return Sort.by(Sort.Direction.ASC, "creationDate");
-        }
-
-        // Default sort is the latest project first
-        return Sort.by(Sort.Direction.DESC, "creationDate");
-    }
 
 }
