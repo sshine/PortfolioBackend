@@ -151,11 +151,16 @@ public class ProjectServiceImpl implements ProjectService {
 
     @Override
     public List<ProjectResponse> getAllProjects() {
-        List<Project> projects = projectRepository.findAll();
-        return projects.stream()
-                .map(projectMapper::toResponse)
-                .toList();
+        return getProjectsByFilters(null, null, null);
+
+        // TODO: slet hvis det virker
+//        List<Project> projects = projectRepository.findAll();
+//        return projects.stream()
+//                .map(projectMapper::toResponse)
+//                .toList();
+
     }
+
     @Override
     @Transactional
     public ProjectResponse addImagesToProject(Long projectId,
@@ -269,13 +274,23 @@ public class ProjectServiceImpl implements ProjectService {
     @Override
     @Transactional
     public void deleteProject(Long id) {
+        Project project = projectRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Project", id));
 
-        Project project = findProjectById(id);
+        // Delete image files from storage
+        for (Image image : project.getImages()) {
+            try {
+                imageStorageService.delete(image.getUrl());
+            } catch (Exception e) {
+                // Log but don't fail
+            }
+        }
 
-        deleteAllImages(project);
+        // Delete image records from db
+        imageRepository.deleteAll(project.getImages());
 
+        // Delete project
         projectRepository.delete(project);
-
     }
 
     // TODO: Er dette noget vi skal bruge til noget, ellers skal den vel slettes? :) Kan ikke se noget task på den.
@@ -284,20 +299,22 @@ public class ProjectServiceImpl implements ProjectService {
         throw new UnsupportedOperationException("Not implemented yet");
     }
 
-    // TODO
+
+    // Sort by creation date
     @Override
     public List<ProjectResponse> getAllProjectsOrderedByDate(String sortDirection) {
 
+        // Sort object
         Sort sort = sortByDate(sortDirection);
 
+        // Sort projects
         List<Project> projects = projectRepository.findAll(sort);
 
-
-        return projects.stream()
-                .map(projectMapper::toResponse)
-                .toList();
+        return mapProjectsToResponse(projects);
 
     }
+
+    // ------------------------------------------------ HELPER METHODS -------------------------------------------------
 
     // --- Helpers for create project ---
 
@@ -352,7 +369,7 @@ public class ProjectServiceImpl implements ProjectService {
     private Project findProjectById(Long id) {
 
         return projectRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Project not found with id " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Project", id));
     }
 
     // --- Helper for update image ---
@@ -360,7 +377,7 @@ public class ProjectServiceImpl implements ProjectService {
     private Image findImageById(Long imageId) {
 
         return imageRepository.findById(imageId)
-                .orElseThrow(() -> new ResourceNotFoundException("Image not found with id " + imageId));
+                .orElseThrow(() -> new ResourceNotFoundException("Image", imageId));
     }
 
     // --- Helper for delete image ---
@@ -384,7 +401,22 @@ public class ProjectServiceImpl implements ProjectService {
         }
     }
 
+    // --- Helper for sort by date ---
+    private Sort sortByDate(String sortDirection) {
 
+        if (sortDirection != null && sortDirection.equalsIgnoreCase("asc")) {
+            return Sort.by(Sort.Direction.ASC, "creationDate");
+        }
+
+        // Default sort is the latest project first
+        return Sort.by(Sort.Direction.DESC, "creationDate");
+    }
+
+    // --- Helper for mapping of project list ---
+
+    private List<ProjectResponse> mapProjectsToResponse(List<Project> projects) {
+        return projects.stream().map(projectMapper::toResponse).toList();
+    }
 
     /**
      * Validate that deleting the image will not violate business rules
@@ -407,16 +439,7 @@ public class ProjectServiceImpl implements ProjectService {
             throw new IllegalArgumentException("Cannot delete the last AFTER image of the project");
         }
     }
-    // --- Helper for sort by date ---
-    private Sort sortByDate(String sortDirection) {
 
-        if (sortDirection != null && sortDirection.equalsIgnoreCase("asc")) {
-            return Sort.by(Sort.Direction.ASC, "creationDate");
-        }
-
-        // Default sort is the latest project first
-        return Sort.by(Sort.Direction.DESC, "creationDate");
-    }
 
     // ==== FILTRERINGSLOGIK ===
 
@@ -441,17 +464,24 @@ public class ProjectServiceImpl implements ProjectService {
     }
 
     @Override
-    public List<ProjectResponse> getProjectsByFilters(WorkType workType, CustomerType customerType) {
+    public List<ProjectResponse> getProjectsByFilters(WorkType workType, CustomerType customerType, String sortDirection) {
         List<Project> projects;
 
+        // Build Sort object
+        Sort sort = sortByDate(sortDirection);
+
         if (workType != null && customerType != null) {
-            projects = projectRepository.findByWorkTypeAndCustomerType(workType, customerType);
+            // Both filters with sorting
+            projects = projectRepository.findByWorkTypeAndCustomerType(workType, customerType, sort);
         } else if (workType != null) {
-            projects = projectRepository.findByWorkType(workType);
+            // Only workType filter with sorting
+            projects = projectRepository.findByWorkType(workType, sort);
         } else if (customerType != null) {
-            projects = projectRepository.findByCustomerType(customerType);
+            // Only customerType with sorting
+            projects = projectRepository.findByCustomerType(customerType, sort);
         } else {
-            projects = projectRepository.findAll();
+            // No filters - just sorting
+            projects = projectRepository.findAll(sort);
         }
 
         return projects.stream()

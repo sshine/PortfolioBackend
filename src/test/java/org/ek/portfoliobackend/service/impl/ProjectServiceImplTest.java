@@ -17,8 +17,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Sort;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -29,6 +31,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.within;
 import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -465,6 +468,7 @@ TDD test for old update image method
 //        verify(imageRepository).save(existingImage);
 //    }
 
+
     // ---- TDD tests for delete ----
 
 
@@ -472,18 +476,19 @@ TDD test for old update image method
     @Test
     void deleteProject_shouldDeleteAllImagesAndProject() {
 
+        // Given
         existingImage.setUrl("/uploads/old.jpg");
         mockProject.setImages(List.of(existingImage));
 
         when(projectRepository.findById(1L)).thenReturn(Optional.of(mockProject));
 
+        // When
         projectService.deleteProject(1L);
 
+        // Then
         verify(imageStorageService).delete("/uploads/old.jpg");
         verify(projectRepository).delete(mockProject);
     }
-
-
 
     // Throw exception if no project is found
     @Test
@@ -498,6 +503,87 @@ TDD test for old update image method
         verify(imageStorageService, never()).delete(anyString());
         verify(projectRepository, never()).delete(any());
     }
+
+    // ---- TDD tests for order by creation date ----
+
+    // Should return projects in ascending order
+    @Test
+    @DisplayName("getAllProjectsOrderedByDate should sort by creationDate ascending when sortDirection is 'asc'")
+    void shouldSortAscendingWhenAsc() {
+
+        // Arrange
+        when(projectRepository.findAll(any(Sort.class)))
+                .thenReturn(List.of(mockProject));
+
+        when(projectMapper.toResponse(any(Project.class)))
+                .thenReturn(mockProjectResponse);
+
+        // Act
+        projectService.getAllProjectsOrderedByDate("asc");
+
+        // Assert
+        ArgumentCaptor<Sort> sortCaptor = ArgumentCaptor.forClass(Sort.class);
+        verify(projectRepository).findAll(sortCaptor.capture());
+
+        Sort usedSort = sortCaptor.getValue();
+        Sort.Order order = usedSort.getOrderFor("creationDate");
+
+        assertNotNull(order);
+        assertEquals(Sort.Direction.ASC, order.getDirection());
+    }
+
+    // Sort projects default in descending order
+    @Test
+    @DisplayName("getAllProjectsOrderedByDate should default to descending sort when sortDirection is null")
+    void shouldSortDescendingByDefault() {
+
+        // Arrange
+        when(projectRepository.findAll(any(Sort.class)))
+                .thenReturn(List.of(mockProject));
+
+        when(projectMapper.toResponse(any(Project.class)))
+                .thenReturn(mockProjectResponse);
+
+        // Act
+        projectService.getAllProjectsOrderedByDate(null);
+
+        // Assert
+        ArgumentCaptor<Sort> sortCaptor = ArgumentCaptor.forClass(Sort.class);
+        verify(projectRepository).findAll(sortCaptor.capture());
+
+        Sort usedSort = sortCaptor.getValue();
+        Sort.Order order = usedSort.getOrderFor("creationDate");
+
+        assertNotNull(order);
+        assertEquals(Sort.Direction.DESC, order.getDirection());
+    }
+
+    // Mapper is called on each project
+    @Test
+    @DisplayName("getAllProjectsOrderedByDate should map all projects to ProjectResponse list")
+    void shouldMapAllProjects() {
+
+        // Arrange
+        Project p1 = new Project();
+        Project p2 = new Project();
+        List<Project> projects = List.of(p1, p2);
+
+        when(projectRepository.findAll(any(Sort.class)))
+                .thenReturn(projects);
+
+        when(projectMapper.toResponse(any(Project.class)))
+                .thenReturn(new ProjectResponse());
+
+        // Act
+        List<ProjectResponse> responseList =
+                projectService.getAllProjectsOrderedByDate("asc");
+
+        // Assert
+        verify(projectMapper, times(2)).toResponse(any(Project.class));
+        assertEquals(2, responseList.size());
+    }
+
+
 
 
 
@@ -595,7 +681,7 @@ TDD test for old update image method
         response2.setId(2L);
         response2.setTitle("Project 2");
 
-        when(projectRepository.findAll()).thenReturn(List.of(project1, project2));
+        when(projectRepository.findAll(any(Sort.class))).thenReturn(List.of(project1, project2));
         when(projectMapper.toResponse(project1)).thenReturn(response1);
         when(projectMapper.toResponse(project2)).thenReturn(response2);
 
@@ -607,7 +693,7 @@ TDD test for old update image method
         assertEquals(2, result.size());
         assertEquals(1L, result.get(0).getId());
         assertEquals(2L, result.get(1).getId());
-        verify(projectRepository).findAll();
+        verify(projectRepository).findAll(any(Sort.class));
         verify(projectMapper).toResponse(project1);
         verify(projectMapper).toResponse(project2);
     }
@@ -616,7 +702,7 @@ TDD test for old update image method
     @DisplayName("getAllProjects - returns empty list when no projects exist")
     void getAllProjects_NoProjectsExist_ReturnsEmptyList() {
         // Arrange
-        when(projectRepository.findAll()).thenReturn(Collections.emptyList());
+        when(projectRepository.findAll(any(Sort.class))).thenReturn(Collections.emptyList());
 
         // Act
         List<ProjectResponse> result = projectService.getAllProjects();
@@ -624,7 +710,7 @@ TDD test for old update image method
         // Assert
         assertNotNull(result);
         assertTrue(result.isEmpty());
-        verify(projectRepository).findAll();
+        verify(projectRepository).findAll(any(Sort.class));
         verify(projectMapper, never()).toResponse(any());
     }
 
@@ -697,16 +783,17 @@ TDD test for old update image method
         WorkType workType = WorkType.ROOF_CLEANING;
         CustomerType customerType = CustomerType.BUSINESS_CUSTOMER;
         List<Project> mockProjects = List.of(new Project());
-        when(projectRepository.findByWorkTypeAndCustomerType(workType, customerType)).thenReturn(mockProjects);
+        when(projectRepository.findByWorkTypeAndCustomerType(eq(workType), eq(customerType), any(Sort.class)))
+                .thenReturn(mockProjects);
 
         // Act
-        List<ProjectResponse> result = projectService.getProjectsByFilters(workType, customerType);
+        List<ProjectResponse> result = projectService.getProjectsByFilters(workType, customerType, null);
 
         // Assert
-        verify(projectRepository).findByWorkTypeAndCustomerType(workType, customerType);
+        verify(projectRepository).findByWorkTypeAndCustomerType(eq(workType), eq(customerType), any(Sort.class));
         verify(projectRepository, never()).findByWorkType(any());
         verify(projectRepository, never()).findByCustomerType(any());
-        verify(projectRepository, never()).findAll();
+        verify(projectRepository, never()).findAll(any(Sort.class));
         assertThat(result).hasSize(1);
     }
 
@@ -716,16 +803,16 @@ TDD test for old update image method
         // Arrange
         WorkType workType = WorkType.FACADE_CLEANING;
         List<Project> mockProjects = List.of(new Project());
-        when(projectRepository.findByWorkType(workType)).thenReturn(mockProjects);
+        when(projectRepository.findByWorkType(eq(workType), any(Sort.class))).thenReturn(mockProjects);
 
         // Act
-        List<ProjectResponse> result = projectService.getProjectsByFilters(workType, null);
+        List<ProjectResponse> result = projectService.getProjectsByFilters(workType, null, null);
 
         // Assert
-        verify(projectRepository).findByWorkType(workType);
-        verify(projectRepository, never()).findByCustomerType(any());
-        verify(projectRepository, never()).findByWorkTypeAndCustomerType(any(), any());
-        verify(projectRepository, never()).findAll();
+        verify(projectRepository).findByWorkType(eq(workType), any(Sort.class));
+        verify(projectRepository, never()).findByCustomerType(any(), any());
+        verify(projectRepository, never()).findByWorkTypeAndCustomerType(any(), any(), any());
+        verify(projectRepository, never()).findAll(any(Sort.class));
         assertThat(result).hasSize(1);
     }
 
@@ -735,16 +822,16 @@ TDD test for old update image method
         // Arrange
         CustomerType customerType = CustomerType.PRIVATE_CUSTOMER;
         List<Project> mockProjects = List.of(new Project());
-        when(projectRepository.findByCustomerType(customerType)).thenReturn(mockProjects);
+        when(projectRepository.findByCustomerType(eq(customerType), any(Sort.class))).thenReturn(mockProjects);
 
         // Act
-        List<ProjectResponse> result = projectService.getProjectsByFilters(null, customerType);
+        List<ProjectResponse> result = projectService.getProjectsByFilters(null, customerType, null);
 
         // Assert
-        verify(projectRepository).findByCustomerType(customerType);
-        verify(projectRepository, never()).findByWorkType(any());
-        verify(projectRepository, never()).findByWorkTypeAndCustomerType(any(), any());
-        verify(projectRepository, never()).findAll();
+        verify(projectRepository).findByCustomerType(eq(customerType), any(Sort.class));
+        verify(projectRepository, never()).findByWorkType(any(), any());
+        verify(projectRepository, never()).findByWorkTypeAndCustomerType(any(), any(), any());
+        verify(projectRepository, never()).findAll(any(Sort.class));
         assertThat(result).hasSize(1);
     }
 
@@ -753,16 +840,16 @@ TDD test for old update image method
     void getProjectsByFilters_withNoParameters_shouldCallFindAll() {
         // Arrange
         List<Project> mockProjects = List.of(new Project(), new Project());
-        when(projectRepository.findAll()).thenReturn(mockProjects);
+        when(projectRepository.findAll(any(Sort.class))).thenReturn(mockProjects);
 
         // Act
-        List<ProjectResponse> result = projectService.getProjectsByFilters(null, null);
+        List<ProjectResponse> result = projectService.getProjectsByFilters(null, null, null);
 
         // Assert
-        verify(projectRepository).findAll();
-        verify(projectRepository, never()).findByWorkType(any());
-        verify(projectRepository, never()).findByCustomerType(any());
-        verify(projectRepository, never()).findByWorkTypeAndCustomerType(any(), any());
+        verify(projectRepository).findAll(any(Sort.class));
+        verify(projectRepository, never()).findByWorkType(any(), any());
+        verify(projectRepository, never()).findByCustomerType(any(), any());
+        verify(projectRepository, never()).findByWorkTypeAndCustomerType(any(), any(), any());
         assertThat(result).hasSize(2);
     }
 
@@ -770,13 +857,13 @@ TDD test for old update image method
     @DisplayName("getProjectsByFilters - returns empty list when no projects match the filters")
     void getProjectsByFilters_withNoProjectsFound_shouldReturnEmptyList() {
         // Arrange
-        when(projectRepository.findAll()).thenReturn(Collections.emptyList());
+        when(projectRepository.findAll(any(Sort.class))).thenReturn(Collections.emptyList());
 
         // Act
-        List<ProjectResponse> result = projectService.getProjectsByFilters(null, null);
+        List<ProjectResponse> result = projectService.getProjectsByFilters(null, null, null);
 
         // Assert
-        verify(projectRepository).findAll();
+        verify(projectRepository).findAll(any(Sort.class));
         assertThat(result).isEmpty();
     }
 
@@ -946,5 +1033,59 @@ TDD test for old update image method
                 () -> projectService.deleteImageFromProject(1L, 999L));
 
         verify(imageRepository, never()).delete(any());
+    }
+
+    @Test
+    @DisplayName("deleteProject - Success")
+    void deleteProject_WithValidId_DeletesProjectAndImages() {
+        // Arrange
+        Project project = new Project();
+        project.setId(1L);
+        project.setTitle("Test Project");
+
+        Image image1 = new Image();
+        image1.setId(1L);
+        image1.setUrl("/uploads/image1.jpg");
+        image1.setProject(project);
+
+        Image image2 = new Image();
+        image2.setId(2L);
+        image2.setUrl("/uploads/image2.jpg");
+        image2.setProject(project);
+
+        List<Image> images = new ArrayList<>();
+        images.add(image1);
+        images.add(image2);
+        project.setImages(images);
+
+        when(projectRepository.findById(1L)).thenReturn(Optional.of(project));
+        doNothing().when(imageStorageService).delete(anyString());
+        doNothing().when(imageRepository).deleteAll(anyList());
+        doNothing().when(projectRepository).delete(any(Project.class));
+
+        // Act
+        projectService.deleteProject(1L);
+
+        // Assert
+        verify(projectRepository).findById(1L);
+        verify(imageStorageService).delete("/uploads/image1.jpg");
+        verify(imageStorageService).delete("/uploads/image2.jpg");
+        verify(imageRepository).deleteAll(images);
+    }
+
+    @Test
+    @DisplayName("deleteProject - Project Not Found")
+    void deleteProject_WithInvalidId_ThrowsResourceNotFoundException() {
+        // Arrange
+        when(projectRepository.findById(999L)).thenReturn(Optional.empty());
+
+        // Act & Assert
+        assertThrows(ResourceNotFoundException.class,
+                () -> projectService.deleteProject(999L));
+
+        verify(projectRepository).findById(999L);
+        verify(imageStorageService, never()).delete(anyString());
+        verify(imageRepository, never()).deleteAll(anyList());
+        verify(projectRepository, never()).delete(any(Project.class));
     }
 }

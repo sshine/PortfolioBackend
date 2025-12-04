@@ -7,6 +7,7 @@ import org.ek.portfoliobackend.dto.request.UpdateProjectRequest;
 import org.ek.portfoliobackend.dto.response.ProjectResponse;
 import org.ek.portfoliobackend.model.CustomerType;
 import org.ek.portfoliobackend.model.WorkType;
+import org.springframework.data.domain.Sort;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
@@ -40,7 +41,7 @@ public interface ProjectService {
     List<ProjectResponse> getProjectsByCustomerType(CustomerType customerType);
 
     //get projects filtered by service category and customer type
-    List<ProjectResponse> getProjectsByFilters(WorkType workType, CustomerType customerType);
+    List<ProjectResponse> getProjectsByFilters(WorkType workType, CustomerType customerType, String sortDirection);
 
     //get projects within date range
     List<ProjectResponse> getProjectsByDateRange(LocalDate startDate, LocalDate endDate);

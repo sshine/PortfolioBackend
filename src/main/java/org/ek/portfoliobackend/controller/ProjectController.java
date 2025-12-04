@@ -11,11 +11,11 @@ import org.ek.portfoliobackend.model.CustomerType;
 import org.ek.portfoliobackend.model.WorkType;
 import org.ek.portfoliobackend.service.ProjectService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
@@ -45,17 +45,20 @@ public class ProjectController {
         return ResponseEntity.ok(response);
     }
 
-    // Retrieves all projects with optional filtering by workType and customerType.
+    // Retrieves all projects with optional filtering and sorting, by workType and customerType.
     @GetMapping
     public ResponseEntity<List<ProjectResponse>> getAllProjects(
             @RequestParam(required = false) WorkType workType,
-            @RequestParam(required = false)CustomerType customerType) {
+            @RequestParam(required = false)CustomerType customerType,
+            @RequestParam(name = "sort", required = false)
+            String sortDirection) {
 
-        log.info("Received request to fetch projects - workType: {}, customerType: {}", workType, customerType);
+        log.info("Received request to fetch projects - workType: {}, customerType: {}, sort {}",
+                workType, customerType, sortDirection);
 
-        List<ProjectResponse> projects = projectService.getProjectsByFilters(workType, customerType);
+        List<ProjectResponse> projects = projectService.getProjectsByFilters(workType, customerType, sortDirection);
 
-        log.info("Successfully retrieved {} projects with applied filters", projects.size());
+        log.info("Successfully retrieved {} projects with applied filters and sorting", projects.size());
         return ResponseEntity.ok(projects);
     }
 
@@ -71,8 +74,6 @@ public class ProjectController {
      * @param images List of image files to upload
      * @param imageMetadata Metadata for each image (imageType, isFeatured)
      * @return ResponseEntity with the created project and HTTP 201 status
-     * @throws ResponseStatusException with BAD_REQUEST if validation fails
-     * @throws ResponseStatusException with INTERNAL_SERVER_ERROR if storage or persistence fails
      */
     @PostMapping(consumes = "multipart/form-data")
     public ResponseEntity<ProjectResponse> createProject(
@@ -181,5 +182,16 @@ public class ProjectController {
 
         log.info("Successfully deleted image ID: {} from project ID: {}", imageId, projectId);
         return ResponseEntity.ok(updatedProject);
+    }
+
+    // Deletes project and all associated images
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteProject(@PathVariable Long id) {
+        log.info("Received request to delete project with ID: {}", id);
+
+        projectService.deleteProject(id);
+
+        log.info("Successfully deleted project with ID: {}", id);
+        return ResponseEntity.noContent().build();
     }
 }

@@ -29,7 +29,9 @@ import java.util.Arrays;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -49,6 +51,7 @@ class ProjectControllerTest {
 
     @MockitoBean
     private ProjectService projectService;
+
 
     private CreateProjectRequest validRequest;
     private MockMultipartFile beforeImage;
@@ -141,35 +144,7 @@ class ProjectControllerTest {
                 .andExpect(status().isNotFound());
     }
 
-    @Test
-    @DisplayName("GET /api/projects - Success with multiple projects")
-    void getAllProjects_ReturnsListOfProjects() throws Exception {
-        // Arrange
-        ProjectResponse project1 = new ProjectResponse();
-        project1.setId(1L);
-        project1.setTitle("Project 1");
-        project1.setWorkType(WorkType.FACADE_CLEANING);
-        project1.setCustomerType(CustomerType.BUSINESS_CUSTOMER);
-        project1.setImages(List.of());
 
-        ProjectResponse project2 = new ProjectResponse();
-        project2.setId(2L);
-        project2.setTitle("Project 2");
-        project2.setWorkType(WorkType.ROOF_CLEANING);
-        project2.setCustomerType(CustomerType.PRIVATE_CUSTOMER);
-        project2.setImages(List.of());
-
-        when(projectService.getAllProjects()).thenReturn(Arrays.asList(project1, project2));
-
-        // Act & Assert
-        mockMvc.perform(get("/api/projects"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(2))
-                .andExpect(jsonPath("$[0].id").value(1))
-                .andExpect(jsonPath("$[0].title").value("Project 1"))
-                .andExpect(jsonPath("$[1].id").value(2))
-                .andExpect(jsonPath("$[1].title").value("Project 2"));
-    }
 
     @Test
     @DisplayName("GET /api/projects - Success with no projects")
@@ -181,6 +156,43 @@ class ProjectControllerTest {
         mockMvc.perform(get("/api/projects"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(0));
+    }
+
+    @Test
+    @DisplayName("GET /api/projects without sort parameter should call service with null")
+    void getAllProjects_NoSortParam_ShouldUseNull() throws Exception {
+
+        // Arrange
+        List<ProjectResponse> mockList = List.of(expectedResponse);
+        when(projectService.getProjectsByFilters(null, null, null))
+                .thenReturn(mockList);
+
+        // Act
+        mockMvc.perform(get("/api/projects")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk());
+
+        // Assert
+        verify(projectService).getProjectsByFilters(null, null, null);
+    }
+
+    @Test
+    @DisplayName("GET /api/projects?sort=asc should pass 'asc' to service")
+    void getAllProjects_SortAsc_ShouldPassAsc() throws Exception {
+
+        // Arrange
+        List<ProjectResponse> mockList = List.of(expectedResponse);
+        when(projectService.getProjectsByFilters(null, null, "asc"))
+                .thenReturn(mockList);
+
+        // Act
+        mockMvc.perform(get("/api/projects")
+                        .param("sort", "asc")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk());
+
+        // Assert
+        verify(projectService).getProjectsByFilters(null, null, "asc");
     }
 
     @Test
@@ -635,5 +647,32 @@ class ProjectControllerTest {
         // Act & Assert
         mockMvc.perform(delete("/api/projects/1/images/999"))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("DELETE /api/projects/{id} - Success")
+    void deleteProject_WithValidId_ReturnsNoContent() throws Exception {
+        // Arrange
+        doNothing().when(projectService).deleteProject(1L);
+
+        // Act & Assert
+        mockMvc.perform(delete("/api/projects/1"))
+                .andExpect(status().isNoContent());
+
+        verify(projectService).deleteProject(1L);
+    }
+
+    @Test
+    @DisplayName("DELETE /api/projects/{id} - Not Found")
+    void deleteProject_WithInvalidId_ReturnsNotFound() throws Exception {
+        // Arrange
+        doThrow(new ResourceNotFoundException("Project", 999L))
+                .when(projectService).deleteProject(999L);
+
+        // Act & Assert
+        mockMvc.perform(delete("/api/projects/999"))
+                .andExpect(status().isNotFound());
+
+        verify(projectService).deleteProject(999L);
     }
 }
