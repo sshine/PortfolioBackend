@@ -125,7 +125,7 @@ services:
     # dockerfile: Navnet på Dockerfile (default er "Dockerfile")
 
     build:
-      context: ./backend
+      context: .
       dockerfile: Dockerfile
 
     container_name: algenord-backend
