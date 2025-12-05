@@ -1,13 +1,13 @@
-package org.ek.portofoliobackend;
+package org.ek.portfoliobackend;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class PortofolioBackendApplication {
+public class PortfolioBackendApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(PortofolioBackendApplication.class, args);
+        SpringApplication.run(PortfolioBackendApplication.class, args);
     }
 
 }

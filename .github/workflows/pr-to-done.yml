@@ -1,0 +1,146 @@
+name: Move Closed Issue to Done
+
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  move-issue-to-done:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+      issues: write
+
+    steps:
+      - name: Move Linked Issue to Done
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        with:
+          github-token: ${{ secrets.PROJECT_TOKEN }}
+          script: |
+            const pr = context.payload.pull_request;
+            const prBody = pr.body || '';
+            
+            // Extract issue number from PR body or branch name
+            let issueNumber = null;
+            
+            // Try to find "Closes #X" in PR body
+            const closesMatch = prBody.match(/(?:closes|fixes|resolves)\s+#(\d+)/i);
+            if (closesMatch) {
+              issueNumber = closesMatch[1];
+            }
+            
+            // If not found in body, try branch name (feature/#X-description)
+            if (!issueNumber) {
+              const branchMatch = pr.head.ref.match(/feature\/#(\d+)/);
+              if (branchMatch) {
+                issueNumber = branchMatch[1];
+              }
+            }
+            
+            if (!issueNumber) {
+              console.log('No linked issue found');
+              return;
+            }
+            
+            console.log(`Found linked issue #${issueNumber}`);
+            
+            // Query to find the issue in the project
+            const query = `
+              query($org: String!, $number: Int!) {
+                organization(login: $org) {
+                  projectV2(number: $number) {
+                    id
+                    fields(first: 20) {
+                      nodes {
+                        ... on ProjectV2SingleSelectField {
+                          id
+                          name
+                          options {
+                            id
+                            name
+                          }
+                        }
+                      }
+                    }
+                    items(first: 100) {
+                      nodes {
+                        id
+                        content {
+                          ... on Issue {
+                            number
+                            repository {
+                              name
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            `;
+            
+            const result = await github.graphql(query, {
+              org: 'TeamOrnOps',
+              number: 3
+            });
+            
+            const project = result.organization.projectV2;
+            
+            // Find the project item for this issue
+            const projectItem = project.items.nodes.find(item => 
+              item.content?.number === parseInt(issueNumber) && 
+              item.content?.repository?.name === context.repo.repo
+            );
+            
+            if (!projectItem) {
+              console.log(`Issue #${issueNumber} not found in project`);
+              return;
+            }
+            
+            // Find Status field and Done option
+            const statusField = project.fields.nodes.find(f => f.name === 'Status');
+            if (!statusField) {
+              console.log('Status field not found');
+              return;
+            }
+            
+            const doneOption = statusField.options.find(o => o.name === 'Done');
+            if (!doneOption) {
+              console.log('Done option not found in Status field');
+              return;
+            }
+            
+            // Update the status to Done
+            await github.graphql(`
+              mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String!) {
+                updateProjectV2ItemFieldValue(
+                  input: {
+                    projectId: $projectId
+                    itemId: $itemId
+                    fieldId: $fieldId
+                    value: { singleSelectOptionId: $optionId }
+                  }
+                ) {
+                  projectV2Item {
+                    id
+                  }
+                }
+              }
+            `, {
+              projectId: project.id,
+              itemId: projectItem.id,
+              fieldId: statusField.id,
+              optionId: doneOption.id
+            });
+            
+            console.log(`Moved Issue #${issueNumber} to Done`);
+            
+            // Add comment to the issue
+            const wasMerged = pr.merged ? 'merged' : 'closed';
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              body: `This issue was automatically moved to Done because PR #${pr.number} was ${wasMerged}.`
+            });

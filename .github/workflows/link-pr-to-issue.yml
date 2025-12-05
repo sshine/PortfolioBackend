@@ -1,0 +1,80 @@
+name: Link PR to Issue
+
+on:
+  pull_request:
+    types: [opened, edited]
+
+jobs:
+  link-issue:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      issues: write
+    
+    steps:
+      - name: Link PR to Issue
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const prBody = pr.body || '';
+            
+            // Extract issue number from PR body or branch name
+            let issueNumber = null;
+            
+            // Try to find "Closes #X" in PR body
+            const closesMatch = prBody.match(/(?:closes|fixes|resolves)\s+#(\d+)/i);
+            if (closesMatch) {
+              issueNumber = closesMatch[1];
+            }
+            
+            // If not found in body, try branch name (feature/#X-description)
+            if (!issueNumber) {
+              const branchMatch = pr.head.ref.match(/feature\/#(\d+)/);
+              if (branchMatch) {
+                issueNumber = branchMatch[1];
+                
+                // Add comment linking to issue if not already in body
+                if (!prBody.includes(`#${issueNumber}`)) {
+                  await github.rest.issues.createComment({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: pr.number,
+                    body: `🔗 This PR is related to issue #${issueNumber}`
+                  });
+                }
+              }
+            }
+            
+            // Verify issue exists
+            if (issueNumber) {
+              try {
+                const issue = await github.rest.issues.get({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issueNumber
+                });
+                
+                console.log(`✅ Linked PR #${pr.number} to Issue #${issueNumber}`);
+                
+                // Add comment linking to issue if not already in body
+                if (!prBody.includes(`#${issueNumber}`)) {
+                  await github.rest.issues.createComment({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: pr.number,
+                    body: `🔗 This PR is linked to issue #${issueNumber}`
+                  });
+                }
+                
+                // Add comment to the issue that a PR was opened
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issueNumber,
+                  body: `🔄 Pull request #${pr.number} opened for this issue`
+                });
+              } catch (error) {
+                console.log(`⚠️ Issue #${issueNumber} not found`);
+              }
+            }

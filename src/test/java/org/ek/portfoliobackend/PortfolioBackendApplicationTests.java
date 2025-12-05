@@ -1,10 +1,12 @@
-package org.ek.portofoliobackend;
+package org.ek.portfoliobackend;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
 
 @SpringBootTest
-class PortofolioBackendApplicationTests {
+@ActiveProfiles("test")
+class PortfolioBackendApplicationTests {
 
     @Test
     void contextLoads() {

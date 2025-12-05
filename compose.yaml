@@ -1,0 +1,251 @@
+# ============================================================================
+# ALGENORD PORTFOLIO - DOCKER COMPOSE CONFIGURATION
+# ============================================================================
+# Docker Compose orkestrerer flere containere så de kan arbejde sammen.
+# Med én kommando (docker compose up) starter vi hele applikationen:
+# - Backend (Spring Boot API)
+# - Frontend (Nginx webserver)
+# - Database (MySQL)
+#
+# Denne fil hedder compose.yaml (ikke docker-compose.yml) fordi det er
+# den nye standard fra Docker Compose V2.
+# ============================================================================
+
+
+# ============================================================================
+# SERVICES
+# ============================================================================
+# Services definerer de containere der skal køre.
+# Hver service er en separat container med sin egen konfiguration.
+# Docker Compose opretter automatisk et netværk så services kan tale sammen.
+
+services:
+
+  # ==========================================================================
+  # DATABASE SERVICE
+  # ==========================================================================
+  # Vi bruger MySQL som database i produktion.
+  # Databasen skal starte FØR backend, derfor definerer vi den først.
+
+  database:
+    # image: Hvilket Docker image der skal bruges.
+    # Vi henter MySQL 8.0 direkte fra Docker Hub.
+    # Det er best practice at specificere en version (ikke bare "mysql:latest")
+    # så vi undgår uventede opdateringer der kan bryde applikationen.
+
+    image: mysql:8.0
+
+    # container_name: Giver containeren et fast navn.
+    # Uden dette ville Docker generere et tilfældigt navn.
+    # Gør det lettere at identificere containeren i logs og kommandoer.
+
+    container_name: algenord-database
+
+    # restart: Hvad skal ske hvis containeren crasher?
+    # "unless-stopped" betyder:
+    # - Genstart automatisk ved crash
+    # - Genstart ved Docker daemon restart
+    # - STOP IKKE ved manuel stop (docker compose stop)
+
+    restart: unless-stopped
+
+    # environment: Miljøvariabler der sendes til containeren.
+    # MySQL image'et bruger disse til initial konfiguration.
+    # VIGTIGT: I produktion bør disse værdier komme fra en .env fil
+    # eller secrets manager - IKKE hardcodes i compose.yaml!
+
+    environment:
+      # Root password til MySQL admin bruger
+      # ${VAR} syntaksen henter værdien fra .env filen
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+
+      # Opretter automatisk denne database ved første start
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+
+      # Opretter en bruger som applikationen bruger (ikke root)
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+
+    # volumes: Persisterer data mellem container restarts.
+    # Uden volumes mistes al data når containeren slettes!
+    # "mysql-data:/var/lib/mysql" betyder:
+    # - Opret et named volume kaldet "mysql-data"
+    # - Mount det til MySQL's data directory i containeren
+
+    volumes:
+      - mysql-data:/var/lib/mysql
+
+    # ports: SIKKERHEDSKONFIGURATION
+    # =========================================================================
+    # VIGTIGT: Vi binder KUN til 127.0.0.1 (localhost), IKKE til 0.0.0.0!
+    #
+    # "3306:3306"         = USIKKERT! Tilgængelig fra hele netværket
+    # "127.0.0.1:3306:3306" = SIKKERT! Kun tilgængelig fra host maskinen
+    #
+    # Formatet er: "host_ip:host_port:container_port"
+    #
+    # Databasen skal ALDRIG være direkte tilgængelig fra internettet.
+    # Backend taler med databasen internt via Docker netværket.
+    # Denne port-mapping er kun til debugging fra host maskinen.
+    # I produktion kan denne linje fjernes helt.
+    # =========================================================================
+
+    ports:
+      - "127.0.0.1:3306:3306"
+
+    # healthcheck: Tjekker om containeren er sund og klar.
+    # Andre services kan bruge dette til at vente på databasen.
+    # mysqladmin ping returnerer 0 (success) hvis MySQL er klar.
+
+    healthcheck:
+      # Bruger $$MYSQL_ROOT_PASSWORD - dobbelt $ escaper så containeren læser sin egen env var
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p$$MYSQL_ROOT_PASSWORD"]
+      interval: 10s      # Tjek hvert 10. sekund
+      timeout: 5s        # Vent max 5 sekunder på svar
+      retries: 5         # Prøv 5 gange før container markeres som unhealthy
+      start_period: 30s  # Vent 30 sekunder før første check (MySQL startup tid)
+
+    # networks: Hvilket netværk containeren tilsluttes.
+    # Vi definerer et custom netværk så alle services kan tale sammen.
+
+    networks:
+      - algenord-network
+
+
+  # ==========================================================================
+  # BACKEND SERVICE (Spring Boot)
+  # ==========================================================================
+  # Vores Java backend API der håndterer forretningslogik og database.
+
+  backend:
+    # build: Fortæller Docker Compose at BYGGE et image fra en Dockerfile.
+    # Dette er i modsætning til "image:" der henter et færdigt image.
+    #
+    # context: Hvilken mappe der er "build context" (hvor Dockerfile ligger)
+    # dockerfile: Navnet på Dockerfile (default er "Dockerfile")
+
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    container_name: algenord-backend
+
+    restart: unless-stopped
+
+    # depends_on: Definer afhængigheder mellem services.
+    # Backend skal vente på at databasen er HEALTHY før den starter.
+    # Uden "condition: service_healthy" starter backend før MySQL er klar,
+    # hvilket giver connection errors.
+
+    depends_on:
+      database:
+        condition: service_healthy
+
+    # environment: Spring Boot konfiguration via miljøvariabler.
+    # Spring Boot læser automatisk SPRING_* variabler.
+    # Disse overskriver værdier i application.properties.
+
+    environment:
+      # Aktivér production profil (bruger application-prod.properties)
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE}
+
+      # Database connection string
+      # "database" er hostname - Docker resolver dette til database containerens IP
+      # Dette virker fordi begge services er på samme Docker netværk
+      SPRING_DATASOURCE_URL: jdbc:mysql://database:3306/${MYSQL_DATABASE}
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD}
+
+      # JPA/Hibernate konfiguration
+      # update: Opdater schema automatisk (brug "validate" i ægte produktion)
+      SPRING_JPA_HIBERNATE_DDL_AUTO: ${SPRING_JPA_DDL_AUTO}
+      SPRING_JPA_DATABASE_PLATFORM: org.hibernate.dialect.MySQLDialect
+
+    # ports: Eksponér backend API til host maskinen.
+    # Formatet er "host_port:container_port"
+    # Backend bliver tilgængelig på http://localhost:8080
+
+    ports:
+      - "8080:8080"
+
+    # volumes: Mount uploads mappe så billeder persisteres.
+    # Billeder uploadet via API'et gemmes her.
+    # Ved at mounte en host mappe mistes data ikke ved container genstart.
+
+    volumes:
+      - ./uploads:/app/uploads
+
+    networks:
+      - algenord-network
+
+
+  # ==========================================================================
+  # FRONTEND SERVICE (Nginx)
+  # ==========================================================================
+  # Serverer statiske filer (HTML, CSS, JavaScript) via Nginx webserver.
+  # Nginx er hurtig, let og perfekt til statisk indhold.
+
+  frontend:
+    # build: Bygger frontend fra separat Dockerfile.
+    # Frontend Dockerfile er typisk meget simpel - bare COPY filer til Nginx.
+
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+
+    container_name: algenord-frontend
+
+    restart: unless-stopped
+
+    # depends_on: Frontend venter på backend.
+    # Dette sikrer at API'et er tilgængeligt når brugeren loader siden.
+    # Vi bruger "service_started" (ikke service_healthy) fordi backend
+    # ikke har en healthcheck defineret.
+
+    depends_on:
+      - backend
+
+    # ports: Frontend bliver tilgængelig på http://localhost:80
+    # Port 80 er standard HTTP port, så man kan bare skrive http://localhost
+
+    ports:
+      - "80:80"
+
+    networks:
+      - algenord-network
+
+
+# ============================================================================
+# NETWORKS
+# ============================================================================
+# Docker netværk tillader containere at kommunikere med hinanden.
+# Ved at definere et custom netværk får vi:
+# - DNS resolution: Services kan finde hinanden via navn (fx "database")
+# - Isolation: Kun containere på dette netværk kan tale sammen
+# - Kontrol: Vi bestemmer netværksindstillinger
+
+networks:
+  algenord-network:
+    # driver: bridge er default og opretter et isoleret netværk.
+    # Containere på bridge netværk kan tale sammen, men er isoleret fra host.
+
+    driver: bridge
+
+
+# ============================================================================
+# VOLUMES
+# ============================================================================
+# Named volumes er Docker-managed storage der persisterer data.
+# Fordele over bind mounts (./mappe:/container/mappe):
+# - Docker håndterer placering og permissions
+# - Fungerer ens på alle platforme (Windows, Mac, Linux)
+# - Lettere at backup og migrere
+#
+# Data gemmes typisk i /var/lib/docker/volumes/ på host maskinen.
+
+volumes:
+  mysql-data:
+    # driver: local betyder at data gemmes på host maskinen.
+    # Andre drivers kan gemme på netværk, cloud storage, etc.
+
+    driver: local

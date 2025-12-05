@@ -1,0 +1,317 @@
+name: ghcr.yaml
+# ============================================================================
+# ALGENORD - BUILD AND PUSH TO GHCR (GitHub Container Registry)
+# ============================================================================
+# Dette workflow bygger Docker images og uploader dem til GitHub's container
+# registry (ghcr.io). Dette gør det muligt at deploye applikationen på en
+# server uden at bygge images lokalt.
+#
+# Flowet er:
+# 1. Byg Docker image fra Dockerfile
+# 2. Test at containeren faktisk virker (integrationstest)
+# 3. Upload image til ghcr.io så servere kan hente det
+#
+# Filen skal hedde: .github/workflows/ghcr.yaml
+# ============================================================================
+
+
+# ============================================================================
+# TRIGGERS - Hvornår skal workflow køre?
+# ============================================================================
+# "on:" definerer hvilke events der starter dette workflow.
+# Vi vil bygge og teste ved PRs, men kun pushe til GHCR ved merge til main.
+
+on:
+  # push: Kører når commits pushes direkte til main branch.
+  # Dette er typisk når en PR merges.
+  push:
+    branches: [main]
+
+  # pull_request: Kører når en PR åbnes eller opdateres mod main.
+  # Her bygger og tester vi, men pusher IKKE til GHCR.
+  # Dette sikrer at vi fanger fejl FØR kode merges.
+  pull_request:
+    branches: [main]
+
+  # workflow_dispatch: Tillader manuel kørsel fra GitHub's UI.
+  # Nyttigt til debugging eller hvis man vil genbygge uden at pushe kode.
+  workflow_dispatch:
+
+
+# ============================================================================
+# PERMISSIONS - Hvilke rettigheder har workflow?
+# ============================================================================
+# GitHub Actions bruger GITHUB_TOKEN til at interagere med repository.
+# Vi skal eksplicit angive hvilke rettigheder vi har brug for.
+# Dette følger "principle of least privilege" - kun de nødvendige rettigheder.
+
+permissions:
+  # contents: read - Tillader at læse repository indhold (checkout kode)
+  contents: read
+
+  # packages: write - Tillader at uploade til GitHub Container Registry
+  # GHCR er en del af GitHub Packages, derfor denne permission
+  packages: write
+
+
+# ============================================================================
+# JOBS - Hvad skal udføres?
+# ============================================================================
+# Et workflow består af et eller flere jobs.
+# Hvert job kører på en separat virtuel maskine (runner).
+
+jobs:
+  # ==========================================================================
+  # BUILD AND PUSH JOB
+  # ==========================================================================
+  # Dette job bygger Docker image, tester det, og pusher til GHCR.
+  # Alle steps kører sekventielt på samme runner.
+
+  build-and-push:
+    # runs-on: Hvilken type maskine skal job køre på?
+    # ubuntu-latest er en gratis GitHub-hosted runner med Docker installeret.
+    runs-on: ubuntu-latest
+
+    # ========================================================================
+    # STEPS - De individuelle trin i jobbet
+    # ========================================================================
+    # Steps kører i rækkefølge. Hvis et step fejler, stopper hele jobbet
+    # (medmindre "if: always()" er sat).
+
+    steps:
+      # ======================================================================
+      # STEP 1: CHECKOUT KODE
+      # ======================================================================
+      # Henter repository koden ned til runner maskinen.
+      # Uden dette step har vi ingen filer at arbejde med!
+      #
+      # Hash-pinning: Vi bruger commit SHA i stedet for version tag (v4).
+      # Dette er et sikkerhedskrav der beskytter mod supply-chain attacks.
+      # Hvis nogen kompromitterer actions/checkout, kan de ikke ændre
+      # hvad vores pinned SHA peger på.
+
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      # ======================================================================
+      # STEP 2: SETUP DOCKER BUILDX
+      # ======================================================================
+      # Docker Buildx er en udvidet version af docker build.
+      # Det giver os:
+      # - Bedre caching
+      # - Multi-platform builds (linux/amd64, linux/arm64)
+      # - Forbedret ydeevne
+      #
+      # Selvom vi ikke bruger alle features her, er det best practice.
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@c47758b77c9736f4b2ef4073d4d51994fabfe349 # v3.7.1
+
+      # ======================================================================
+      # STEP 3: BUILD DOCKER IMAGE
+      # ======================================================================
+      # Bygger Docker image fra vores Dockerfile.
+      #
+      # Image naming convention for GHCR:
+      # ghcr.io/OWNER/IMAGE_NAME:TAG
+      #
+      # ${{ github.repository_owner }} - Dit GitHub brugernavn eller org navn
+      # Dette gør workflow genbrugeligt på tværs af forks.
+      #
+      # :latest - Tag der altid peger på nyeste version.
+      # I produktion ville man også tagge med version/commit SHA.
+
+      - name: Build Docker image
+        run: |
+          docker build -t ghcr.io/${{ github.repository_owner }}/algenord-backend:latest ./backend
+
+      # ======================================================================
+      # INTEGRATIONSTEST SEKTION
+      # ======================================================================
+      # Før vi pusher image til GHCR, tester vi at det faktisk virker!
+      # Vi starter hele stacken (database + backend + frontend) og
+      # tjekker at vi kan nå et endpoint.
+      #
+      # Dette er et krav fra projekt-dokumentet:
+      # "Skal køre en integrationstest af containeren hvor docker compose up -d
+      # kaldes, der ventes lidt, og man kontakter et udvalgt endpoint."
+      # ======================================================================
+
+      # ======================================================================
+      # STEP 4: CREATE TEST .ENV FILE
+      # ======================================================================
+      # Docker Compose læser miljøvariabler fra .env filen.
+      # Vi opretter en test-version med dummy værdier.
+      #
+      # "cat > .env << EOF" er bash heredoc syntax:
+      # - cat > .env : Skriv til filen .env
+      # - << EOF : Alt indtil "EOF" er indholdet
+      #
+      # VIGTIGT: Disse er kun test-værdier! De bruges ikke i produktion.
+
+      - name: Create test .env
+        run: |
+          cat > .env << EOF
+          MYSQL_ROOT_PASSWORD=testroot
+          MYSQL_DATABASE=algenord
+          MYSQL_USER=testuser
+          MYSQL_PASSWORD=testpass
+          SPRING_PROFILES_ACTIVE=prod
+          SPRING_JPA_DDL_AUTO=update
+          EOF
+
+      # ======================================================================
+      # STEP 5: START CONTAINERS
+      # ======================================================================
+      # Starter alle services defineret i compose.yaml.
+      #
+      # -d flag (detached): Kører containers i baggrunden.
+      # Uden -d ville workflow hænge og vente på at containers stopper.
+      #
+      # Docker Compose vil:
+      # 1. Starte MySQL database
+      # 2. Vente på database healthcheck
+      # 3. Starte backend (som connecter til database)
+      # 4. Starte frontend
+
+      - name: Start containers
+        run: docker compose up -d
+
+      # ======================================================================
+      # STEP 6: WAIT FOR SERVICES
+      # ======================================================================
+      # Selvom Docker Compose har depends_on, tager det tid for:
+      # - MySQL at blive klar til connections
+      # - Spring Boot at starte op
+      # - Database migrations at køre
+      #
+      # 30 sekunder er normalt nok, men kan justeres hvis nødvendigt.
+      # En mere avanceret løsning ville polle endpoint indtil det svarer.
+
+      - name: Wait for services
+        run: sleep 30
+
+      # ======================================================================
+      # STEP 7: TEST ENDPOINT (INTEGRATIONSTEST)
+      # ======================================================================
+      # Her tester vi at applikationen faktisk virker!
+      #
+      # curl options:
+      # -s (silent): Ingen progress output
+      # -o /dev/null: Ignorer response body
+      # -w "%{http_code}": Print kun HTTP status kode
+      #
+      # || echo "000": Hvis curl fejler helt (fx connection refused),
+      # return "000" i stedet for at crashe.
+      #
+      # Vi tjekker for HTTP 200 (OK). Hvis ikke:
+      # 1. Print fejlbesked
+      # 2. Vis container logs (til debugging)
+      # 3. Exit med kode 1 (fejl) så workflow fejler
+      #
+      # VIGTIGT: Tilpas URL til et endpoint I faktisk har!
+      # /api/health er bare et eksempel.
+
+      - name: Test endpoint
+        run: |
+          # Test at backend svarer med 200 OK
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/api/health || echo "000")
+          
+          if [ "$HTTP_STATUS" != "200" ]; then
+            echo "Health check failed with status: $HTTP_STATUS"
+            docker compose logs
+            exit 1
+          fi
+          
+          echo "Health check passed with status: $HTTP_STATUS"
+
+      # ======================================================================
+      # STEP 8: CLEANUP - STOP AND REMOVE CONTAINERS
+      # ======================================================================
+      # Rydder op efter testen, uanset om den lykkedes eller fejlede.
+      #
+      # if: always() - Kører ALTID, selv hvis tidligere steps fejlede.
+      # Dette sikrer at vi ikke efterlader kørende containers.
+      #
+      # docker compose down -v:
+      # - down: Stop og fjern containers
+      # - -v: Fjern også volumes (test data)
+      #
+      # docker system prune -f:
+      # - Fjerner ubrugte images, containers, networks
+      # - -f: Force, ingen bekræftelse
+
+      - name: Stop and remove containers
+        if: always()
+        run: |
+          docker compose down -v
+          docker system prune -f
+
+      # ======================================================================
+      # PUSH TIL GHCR SEKTION
+      # ======================================================================
+      # Hvis integrationstesten lykkedes, uploader vi image til GHCR.
+      # Vi pusher KUN ved push til main (ikke ved PRs).
+      # ======================================================================
+
+      # ======================================================================
+      # STEP 9: LOGIN TIL GHCR
+      # ======================================================================
+      # For at pushe til GHCR skal vi autentificere.
+      #
+      # if: Betingelse for hvornår step skal køre.
+      # - github.event_name == 'push': Kun ved push (ikke PR)
+      # - github.ref == 'refs/heads/main': Kun på main branch
+      #
+      # Dette sikrer at vi ikke pusher:
+      # - Ureviewed kode fra PRs
+      # - Kode fra feature branches
+      #
+      # registry: ghcr.io - GitHub Container Registry
+      # username: github.actor - Den bruger der trigerede workflow
+      # password: GITHUB_TOKEN - Automatisk genereret token med packages:write
+
+      - name: Log in to GHCR
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # ======================================================================
+      # STEP 10: PUSH IMAGE TIL GHCR
+      # ======================================================================
+      # Uploader det byggede image til GitHub Container Registry.
+      #
+      # Efter dette step er image tilgængeligt på:
+      # ghcr.io/teamornops/algenord-backend:latest
+      #
+      # Enhver server med Docker kan nu hente image med:
+      # docker pull ghcr.io/teamornops/algenord-backend:latest
+      #
+      # Samme if-betingelse som login - kun push ved merge til main.
+
+      - name: Push to GHCR
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          docker push ghcr.io/${{ github.repository_owner }}/algenord-backend:latest
+
+
+# ============================================================================
+# NÆSTE SKRIDT: BRUG IMAGE PÅ SERVER
+# ============================================================================
+# Når image er pushet til GHCR, kan du på din server (fx Digital Ocean):
+#
+# 1. Log ind på GHCR (én gang):
+#    echo $GITHUB_TOKEN | docker login ghcr.io -u USERNAME --password-stdin
+#
+# 2. I compose.prod.yaml, brug image i stedet for build:
+#    services:
+#      backend:
+#        image: ghcr.io/teamornops/algenord-backend:latest
+#
+# 3. Pull og start:
+#    docker compose -f compose.prod.yaml pull
+#    docker compose -f compose.prod.yaml up -d
+# ============================================================================

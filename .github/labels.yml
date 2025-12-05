@@ -1,0 +1,17 @@
+# Labels for AlgeNord Project
+# Currently existing labels in the repository
+
+- name: backend
+  description: backend issues
+
+- name: database
+  description: issues regarding database
+
+- name: documentation
+  description: documentation of the backend, diagrams, p...
+
+- name: technical story
+  description: issue for technical stories, includes sub issu...
+
+- name: user story
+  description: issue for user stories, includes sub issues
