@@ -175,7 +175,9 @@ jobs:
       # 4. Starte frontend
 
       - name: Start containers
-        run: docker compose up -d
+        run: |
+          git clone https://github.com/sshine/PortfolioFrontend.git frontend
+          docker compose up -d
 
       # ======================================================================
       # STEP 6: WAIT FOR SERVICES
