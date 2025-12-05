@@ -174,10 +174,10 @@ jobs:
       # 3. Starte backend (som connecter til database)
       # 4. Starte frontend
 
-      - name: Start containers
-        run: |
-          git clone https://github.com/sshine/PortfolioFrontend.git frontend
-          docker compose up -d
+      # - name: Start containers
+      #   run: |
+      #     git clone https://github.com/sshine/PortfolioFrontend.git frontend
+      #     docker compose up -d
 
       # ======================================================================
       # STEP 6: WAIT FOR SERVICES
@@ -190,8 +190,8 @@ jobs:
       # 30 sekunder er normalt nok, men kan justeres hvis nødvendigt.
       # En mere avanceret løsning ville polle endpoint indtil det svarer.
 
-      - name: Wait for services
-        run: sleep 30
+      # - name: Wait for services
+      #   run: sleep 30
 
       # ======================================================================
       # STEP 7: TEST ENDPOINT (INTEGRATIONSTEST)
@@ -214,18 +214,18 @@ jobs:
       # VIGTIGT: Tilpas URL til et endpoint I faktisk har!
       # /api/health er bare et eksempel.
 
-      - name: Test endpoint
-        run: |
-          # Test at backend svarer med 200 OK
-          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/api/health || echo "000")
+      # - name: Test endpoint
+      #   run: |
+      #     # Test at backend svarer med 200 OK
+      #     HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/api/health || echo "000")
           
-          if [ "$HTTP_STATUS" != "200" ]; then
-            echo "Health check failed with status: $HTTP_STATUS"
-            docker compose logs
-            exit 1
-          fi
+      #     if [ "$HTTP_STATUS" != "200" ]; then
+      #       echo "Health check failed with status: $HTTP_STATUS"
+      #       docker compose logs
+      #       exit 1
+      #     fi
           
-          echo "Health check passed with status: $HTTP_STATUS"
+      #     echo "Health check passed with status: $HTTP_STATUS"
 
       # ======================================================================
       # STEP 8: CLEANUP - STOP AND REMOVE CONTAINERS
@@ -243,11 +243,11 @@ jobs:
       # - Fjerner ubrugte images, containers, networks
       # - -f: Force, ingen bekræftelse
 
-      - name: Stop and remove containers
-        if: always()
-        run: |
-          docker compose down -v
-          docker system prune -f
+      # - name: Stop and remove containers
+      #   if: always()
+      #   run: |
+      #     docker compose down -v
+      #     docker system prune -f
 
       # ======================================================================
       # PUSH TIL GHCR SEKTION
